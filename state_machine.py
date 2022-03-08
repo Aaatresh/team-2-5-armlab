@@ -108,8 +108,27 @@ class StateMachine():
         TODO: Implement this function to execute a waypoint plan
               Make sure you respect estop signal
         """
+        numPoses = len(self.waypoints)
+        # print(numPoses)
+
         self.status_message = "State: Execute - Executing motion plan"
-        self.next_state = "idle"
+        estopPRESSED=0;
+        for pose in self.waypoints:
+            #if estop is pressed, go to estop state...
+            if self.next_state == "estop":
+                estopPRESSED = 1;
+                break
+            #otherwise go to next pose
+            print(pose)
+            self.rxarm.set_positions(pose)
+            rospy.sleep(2.)
+            
+
+        
+        if estopPRESSED == 1:
+            self.next_state = "estop"
+        else:
+            self.next_state = "idle"
 
     def calibrate(self):
         """!
