@@ -2,6 +2,9 @@
 """!
 Main GUI for Arm lab
 """
+# from operator import matmul
+import numpy.matlib 
+
 import os
 script_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -218,11 +221,54 @@ class Gui(QMainWindow):
         """
 
         pt = mouse_event.pos()
+
+        "CN: adding code to convert pixel coords to world coors"
+        extMtx = np.array([[0,-1,0,175],[-1,0,0,0],[0,0,-1,976],[0,0,0,1]])
+        
+
+        extMtxR = np.array([extMtx[0,0:3],extMtx[1,0:3],extMtx[2,0:3]])
+        extMtxt = np.array([[extMtx[0,3]],[extMtx[1,3]],[extMtx[2,3]]])
+
+        extMtxRinv = np.linalg.inv(extMtxR)
+        negextMtxRinv_t = np.matmul(-extMtxRinv,extMtxt)
+        # invExtMtx = np.array([[extMtxRinv[0,0:3], negextMtxRinv_t[0]],[extMtxRinv[1,0:3], negextMtxRinv_t[1]],[extMtxRinv[2,0:3], negextMtxRinv_t[2]],[0,0,0,1]])
+        # print extMtxt
+        invExtMtx = np.block([
+            [extMtxRinv,negextMtxRinv_t],
+            [np.zeros((1,3)),np.ones((1,1))]
+        ])
+        # Kfactory = np.array([904.317626953125, 0.0, 644.0140380859375], [0.0, 904.8245239257812, 360.77752685546875], [0.0, 0.0, 1.0])
+        # Kinv = np.linalg.inv(Kfactory)
+
+
+        Kteam =   np.array([[949.7594,0,650.1970],[0,949.3147,365.4619],[0,0,1.0000]])
+        Kinv = np.linalg.inv(Kteam)
+
+        Pteam = np.array([[979.8243,0,653.8207],[0,982.7768,369.4433],[0, 0, 1.0000]])
+        Pinv = np.linalg.inv(Pteam)
+
         if self.camera.DepthFrameRaw.any() != 0:
             z = self.camera.DepthFrameRaw[pt.y()][pt.x()]
             self.ui.rdoutMousePixels.setText("(%.0f,%.0f,%.0f)" %
                                              (pt.x(), pt.y(), z))
-            self.ui.rdoutMouseWorld.setText("(-,-,-)")
+            # camPt = np.array([[pt.x()],[pt.y()],[z],[1]])
+            
+            uv1 = np.array([[pt.x()],[pt.y()],[1]])
+            print "uv1 \n", uv1
+            print "pinv \n", Pinv
+            
+            xyz_c = z*np.matmul(Kinv,uv1)
+            print "xyz_c \n", xyz_c
+            print "Hinv \n", invExtMtx
+            # input()
+            
+            xyz1_w = np.matmul(invExtMtx,np.array([[xyz_c[0,0]],[xyz_c[1,0]],[xyz_c[2,0]],[1]]))
+            
+            wpX = xyz1_w[0,0]
+            wpY = xyz1_w[1,0]
+            wpZ = xyz1_w[2,0]
+            self.ui.rdoutMouseWorld.setText("(%.0f,%.0f,%.0f)" %
+                                            (wpX,wpY,wpZ))
 
     def calibrateMousePress(self, mouse_event):
         """!
