@@ -6,6 +6,7 @@ from PyQt4.QtCore import (QThread, Qt, pyqtSignal, pyqtSlot, QTimer)
 import time
 import numpy as np
 import rospy
+from datetime import datetime
 
 class StateMachine():
     """!
@@ -190,8 +191,8 @@ class StateMachine():
         self.current_state = "recpose"
         newpose = self.rxarm.get_positions()
         newpose = np.append(newpose,self.gripcommand)
-
         self.poses = np.vstack((self.poses,newpose))
+
 
     def recposeGripO(self): 
         self.current_state = "gripstateO"
@@ -204,10 +205,10 @@ class StateMachine():
 
     def endteach(self):
         self.current_state = "endteach"
-        if teaching:
-
-            self.status_message = "Ending Teach! Exporting Pose Path to File"
-            teaching = 0
+        self.status_message = "Ending Teach! Exporting Pose Path to File"
+        mdyhms =  now.strftime("%m/%d/%Y__%H:%M:%S")
+        csvname = "Poses_"+mdyhms+".csv"
+        numpy.savetxt(csvname, self.poses, delimiter=",")
 
 
 class StateMachineThread(QThread):
