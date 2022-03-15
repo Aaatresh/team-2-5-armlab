@@ -1,6 +1,7 @@
 """!
 The state machine that implements the logic.
 """
+from numpy import True_
 from PyQt4.QtCore import (QThread, Qt, pyqtSignal, pyqtSlot, QTimer)
 import time
 import numpy as np
@@ -26,6 +27,8 @@ class StateMachine():
         self.status_message = "State: Idle"
         self.current_state = "idle"
         self.next_state = "idle"
+        self.gripcommand = 0
+        self.poses = [0,0,0,0,0,0]
         self.waypoints = [
             [-np.pi/2,       -0.5,      -0.3,            0.0,       0.0],
             [0.75*-np.pi/2,   0.5,      0.3,      0.0,       np.pi/2],
@@ -77,6 +80,21 @@ class StateMachine():
         if self.next_state == "manual":
             self.manual()
 
+        #CN: ADDED FOR TEACHING
+        if self.next_state == "teachmode":
+            self.teachmode()
+
+        if self.next_state == "recpose":
+            self.recpose()
+
+        if self.next_state == "gripstateO":
+            self.recposeGripO()
+
+        if self.next_state == "gripstateC":
+            self.recposeGripC()
+        
+        if self.next_state == "endteach":
+            self.endteach()
 
     """Functions run for each state"""
 
@@ -112,11 +130,11 @@ class StateMachine():
         # print(numPoses)
 
         self.status_message = "State: Execute - Executing motion plan"
-        estopPRESSED=0;
+        estopPRESSED=0
         for pose in self.waypoints:
             #if estop is pressed, go to estop state...
             if self.next_state == "estop":
-                estopPRESSED = 1;
+                estopPRESSED = 1
                 break
             #otherwise go to next pose
             print(pose)
@@ -158,6 +176,39 @@ class StateMachine():
             self.status_message = "State: Failed to initialize the rxarm!"
             rospy.sleep(5)
         self.next_state = "idle"
+
+    def teachmode(self):
+        self.status_message = "TEACH MODE - new pose array started, torque off"
+        self.current_state = "teachmode"
+        self.rxarm.disable_torque() 
+        #create array for poses
+        self.poses = np.array([0,0,0,0,0,0]);
+        self.gripcommand = 0;
+        #format: [BASE ANGLE, SHOULDER ANGLE, ELBOW ANGLE, WRIST 1, WRIST 2, GRIP STATE]
+
+    def recpose(self):
+        self.current_state = "recpose"
+        newpose = self.rxarm.get_positions()
+        newpose = np.append(newpose,self.gripcommand)
+
+        self.poses = np.vstack((self.poses,newpose))
+
+    def recposeGripO(self): 
+        self.current_state = "gripstateO"
+        self.gripcommand = 0
+
+    def recposeGripC(self):
+        self.current_state = "gripstateC"
+        self.gripcommand = 1
+        
+
+    def endteach(self):
+        self.current_state = "endteach"
+        if teaching:
+
+            self.status_message = "Ending Teach! Exporting Pose Path to File"
+            teaching = 0
+
 
 class StateMachineThread(QThread):
     """!

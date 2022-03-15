@@ -100,6 +100,26 @@ class Gui(QMainWindow):
         self.ui.btnUser4.setText('Execute')
         self.ui.btnUser4.clicked.connect(partial(nxt_if_arm_init, 'execute'))
 
+        #CN: When ready to teach a string of poses
+        self.ui.btnUser5.setText('Start Teach')
+        self.ui.btnUser5.clicked.connect(partial(nxt_if_arm_init, 'teachmode'))
+
+        #CN: When ready to record current pose to teaching path
+        self.ui.btnUser6.setText('Record Pose')
+        self.ui.btnUser6.clicked.connect(partial(nxt_if_arm_init, 'recpose'))
+
+        #CN: Set current pose grip state and append teaching path
+        self.ui.btnUser7.setText('Pose Grip: Open')
+        self.ui.btnUser7.clicked.connect(partial(nxt_if_arm_init, 'gripstateO'))
+
+        #CN: Set current pose grip state and append teaching path
+        self.ui.btnUser8.setText('Pose Grip: Closed')
+        self.ui.btnUser8.clicked.connect(partial(nxt_if_arm_init, 'gripstateC'))
+
+        #CN: When ready to teach a string of poses
+        self.ui.btnUser9.setText('End Teach')
+        self.ui.btnUser9.clicked.connect(partial(nxt_if_arm_init, 'endteach'))
+
         # Sliders
         for sldr in self.joint_sliders:
             sldr.valueChanged.connect(self.sliderChange)
