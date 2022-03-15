@@ -135,7 +135,7 @@ class StateMachine():
         for pose in self.waypoints:
             #if estop is pressed, go to estop state...
             if self.next_state == "estop":
-                estopPRESSED = 1
+                estopPRESSED = 1        self.status_message = "Set Gripper State: Open"
                 break
             #otherwise go to next pose
             print(pose)
@@ -188,6 +188,7 @@ class StateMachine():
         #format: [BASE ANGLE, SHOULDER ANGLE, ELBOW ANGLE, WRIST 1, WRIST 2, GRIP STATE]
 
     def recpose(self):
+        self.status_message = "Recording Current Pose"
         self.current_state = "recpose"
         newpose = self.rxarm.get_positions()
         newpose = np.append(newpose,self.gripcommand)
@@ -195,10 +196,12 @@ class StateMachine():
 
 
     def recposeGripO(self): 
+        self.status_message = "Set Gripper State: Open"
         self.current_state = "gripstateO"
         self.gripcommand = 0
 
     def recposeGripC(self):
+        self.status_message = "Set Gripper State: Closed"
         self.current_state = "gripstateC"
         self.gripcommand = 1
         
