@@ -30,24 +30,19 @@ class StateMachine():
         self.next_state = "idle"
         self.gripcommand = 0
         self.poses = [0,0,0,0,0,0]
-        # self.waypoints = [
-        #     [-np.pi/2,       -0.5,      -0.3,            0.0,       0.0],
-        #     [0.75*-np.pi/2,   0.5,      0.3,      0.0,       np.pi/2],
-        #     [0.5*-np.pi/2,   -0.5,     -0.3,     np.pi / 2,     0.0],
-        #     [0.25*-np.pi/2,   0.5,     0.3,     0.0,       np.pi/2],
-        #     [0.0,             0.0,      0.0,         0.0,     0.0],
-        #     [0.25*np.pi/2,   -0.5,      -0.3,      0.0,       np.pi/2],
-        #     [0.5*np.pi/2,     0.5,     0.3,     np.pi / 2,     0.0],
-        #     [0.75*np.pi/2,   -0.5,     -0.3,     0.0,       np.pi/2],
-        #     [np.pi/2,         0.5,     0.3,      0.0,     0.0],
-        #     [0.0,             0.0,     0.0,      0.0,     0.0]]
-
         self.waypoints = [
-            [-0.153398081660271,	-0.90965062379837,	-0.633534073829651,	-0.615126311779022,	0.029145635664463],
-            [-0.164135947823524,	-0.237767025828361,	1.00015544891357,	-1.28700995445251,	0.032213598489761],
-            [-0.855961322784424,	0.329805880784988,	1.0860583782196,	-2.14757323265076,	-0.110446617007256],
-            [-0.214757323265076,	0.630466103553772,	1.90060222148895,	-1.4404079914093,	0.107378661632538],
-            [-0.003067961661145,	-0.098174773156643,	0.128854393959045,	-1.71038866043091,	0.134990319609642]]
+            [-np.pi/2,       -0.5,      -0.3,            0.0,       0.0],
+            [0.75*-np.pi/2,   0.5,      0.3,      0.0,       np.pi/2],
+            [0.5*-np.pi/2,   -0.5,     -0.3,     np.pi / 2,     0.0],
+            [0.25*-np.pi/2,   0.5,     0.3,     0.0,       np.pi/2],
+            [0.0,             0.0,      0.0,         0.0,     0.0],
+            [0.25*np.pi/2,   -0.5,      -0.3,      0.0,       np.pi/2],
+            [0.5*np.pi/2,     0.5,     0.3,     np.pi / 2,     0.0],
+            [0.75*np.pi/2,   -0.5,     -0.3,     0.0,       np.pi/2],
+            [np.pi/2,         0.5,     0.3,      0.0,     0.0],
+            [0.0,             0.0,     0.0,      0.0,     0.0]]
+
+        self.waypointGrips = 0
 
 
     def set_next_state(self, state):
@@ -146,7 +141,7 @@ class StateMachine():
 
         self.status_message = "State: Execute - Executing motion plan"
         estopPRESSED=0
-        for pose in self.waypoints:
+        for e,pose in enumerate(self.waypoints):
             #if estop is pressed, go to estop state...
             if self.next_state == "estop":
                 estopPRESSED = 1
@@ -154,6 +149,10 @@ class StateMachine():
             #otherwise go to next pose
             print(pose)
             self.rxarm.set_positions(pose)
+            if self.waypointGrips[e] == 1:
+                self.rxarm.close_gripper()
+            else:
+                self.rxarm.open_gripper()
             rospy.sleep(2.)
             
 
@@ -250,6 +249,7 @@ class StateMachine():
         fetchedCSV = np.genfromtxt(csvname, delimiter=",")
 
         self.waypoints = fetchedCSV[1:,0:5]
+        self.waypointGrips = fetchedCSV[1:,5]
         self.next_state="idle"
 class StateMachineThread(QThread):
     """!
