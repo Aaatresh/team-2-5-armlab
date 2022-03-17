@@ -30,17 +30,25 @@ class StateMachine():
         self.next_state = "idle"
         self.gripcommand = 0
         self.poses = [0,0,0,0,0,0]
+        # self.waypoints = [
+        #     [-np.pi/2,       -0.5,      -0.3,            0.0,       0.0],
+        #     [0.75*-np.pi/2,   0.5,      0.3,      0.0,       np.pi/2],
+        #     [0.5*-np.pi/2,   -0.5,     -0.3,     np.pi / 2,     0.0],
+        #     [0.25*-np.pi/2,   0.5,     0.3,     0.0,       np.pi/2],
+        #     [0.0,             0.0,      0.0,         0.0,     0.0],
+        #     [0.25*np.pi/2,   -0.5,      -0.3,      0.0,       np.pi/2],
+        #     [0.5*np.pi/2,     0.5,     0.3,     np.pi / 2,     0.0],
+        #     [0.75*np.pi/2,   -0.5,     -0.3,     0.0,       np.pi/2],
+        #     [np.pi/2,         0.5,     0.3,      0.0,     0.0],
+        #     [0.0,             0.0,     0.0,      0.0,     0.0]]
+
         self.waypoints = [
-            [-np.pi/2,       -0.5,      -0.3,            0.0,       0.0],
-            [0.75*-np.pi/2,   0.5,      0.3,      0.0,       np.pi/2],
-            [0.5*-np.pi/2,   -0.5,     -0.3,     np.pi / 2,     0.0],
-            [0.25*-np.pi/2,   0.5,     0.3,     0.0,       np.pi/2],
-            [0.0,             0.0,      0.0,         0.0,     0.0],
-            [0.25*np.pi/2,   -0.5,      -0.3,      0.0,       np.pi/2],
-            [0.5*np.pi/2,     0.5,     0.3,     np.pi / 2,     0.0],
-            [0.75*np.pi/2,   -0.5,     -0.3,     0.0,       np.pi/2],
-            [np.pi/2,         0.5,     0.3,      0.0,     0.0],
-            [0.0,             0.0,     0.0,      0.0,     0.0]]
+            [-0.153398081660271,	-0.90965062379837,	-0.633534073829651,	-0.615126311779022,	0.029145635664463],
+            [-0.164135947823524,	-0.237767025828361,	1.00015544891357,	-1.28700995445251,	0.032213598489761],
+            [-0.855961322784424,	0.329805880784988,	1.0860583782196,	-2.14757323265076,	-0.110446617007256],
+            [-0.214757323265076,	0.630466103553772,	1.90060222148895,	-1.4404079914093,	0.107378661632538],
+            [-0.003067961661145,	-0.098174773156643,	0.128854393959045,	-1.71038866043091,	0.134990319609642]]
+
 
     def set_next_state(self, state):
         """!
@@ -82,6 +90,9 @@ class StateMachine():
             self.manual()
 
         #CN: ADDED FOR TEACHING
+        if self.next_state == "initteachmode":
+            self.initteachmode()
+
         if self.next_state == "teachmode":
             self.teachmode()
 
@@ -96,6 +107,9 @@ class StateMachine():
         
         if self.next_state == "endteach":
             self.endteach()
+
+        if self.next_state == "recital":
+            self.recital()
 
     """Functions run for each state"""
 
@@ -135,7 +149,7 @@ class StateMachine():
         for pose in self.waypoints:
             #if estop is pressed, go to estop state...
             if self.next_state == "estop":
-                estopPRESSED = 1        self.status_message = "Set Gripper State: Open"
+                estopPRESSED = 1
                 break
             #otherwise go to next pose
             print(pose)
@@ -172,48 +186,71 @@ class StateMachine():
         """
         self.current_state = "initialize_rxarm"
         self.status_message = "RXArm Initialized!"
+        print("HERE! \n")
         if not self.rxarm.initialize():
             print('Failed to initialize the rxarm')
             self.status_message = "State: Failed to initialize the rxarm!"
             rospy.sleep(5)
         self.next_state = "idle"
 
-    def teachmode(self):
+    def initteachmode(self):
         self.status_message = "TEACH MODE - new pose array started, torque off"
-        self.current_state = "teachmode"
+        self.current_state = "initteachmode"
         self.rxarm.disable_torque() 
         #create array for poses
         self.poses = np.array([0,0,0,0,0,0]);
         self.gripcommand = 0;
         #format: [BASE ANGLE, SHOULDER ANGLE, ELBOW ANGLE, WRIST 1, WRIST 2, GRIP STATE]
+        rospy.sleep(2)
+        self.next_state="idleteachmode"
 
+    def teachmode(self):
+        self.status_message = "waiting for teach pose"
+        self.current_state = "idleteachmode"
+        self.rxarm.disable_torque() 
+        
+
+        #format: [BASE ANGLE, SHOULDER ANGLE, ELBOW ANGLE, WRIST 1, WRIST 2, GRIP STATE]
     def recpose(self):
         self.status_message = "Recording Current Pose"
         self.current_state = "recpose"
         newpose = self.rxarm.get_positions()
         newpose = np.append(newpose,self.gripcommand)
         self.poses = np.vstack((self.poses,newpose))
+        self.next_state="idleteachmode"
+
 
 
     def recposeGripO(self): 
         self.status_message = "Set Gripper State: Open"
         self.current_state = "gripstateO"
         self.gripcommand = 0
-
+        self.next_state="idleteachmode"
     def recposeGripC(self):
         self.status_message = "Set Gripper State: Closed"
         self.current_state = "gripstateC"
         self.gripcommand = 1
-        
+        self.next_state="idleteachmode"
 
     def endteach(self):
         self.current_state = "endteach"
         self.status_message = "Ending Teach! Exporting Pose Path to File"
-        mdyhms =  now.strftime("%m/%d/%Y__%H:%M:%S")
-        csvname = "Poses_"+mdyhms+".csv"
-        numpy.savetxt(csvname, self.poses, delimiter=",")
+        now = datetime.now()
+        # mdyhms =  now.strftime("%m_%d_%Y__%H_%M_%S")
+        # csvname = "Poses_"+mdyhms+".csv"
+        csvname = "Poses.csv"
+        np.savetxt(csvname, self.poses, delimiter=",")
+        self.next_state="idle"
 
+    def recital(self):
+        self.current_state = "recital"
+        self.status_message = "Replaying waypoints from Teach"
+        
+        csvname = "Poses.csv"
+        fetchedCSV = np.genfromtxt(csvname, delimiter=",")
 
+        self.waypoints = fetchedCSV[1:,0:5]
+        self.next_state="idle"
 class StateMachineThread(QThread):
     """!
     @brief      Runs the state machine

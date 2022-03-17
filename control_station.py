@@ -102,7 +102,7 @@ class Gui(QMainWindow):
 
         #CN: When ready to teach a string of poses
         self.ui.btnUser5.setText('Start Teach')
-        self.ui.btnUser5.clicked.connect(partial(nxt_if_arm_init, 'teachmode'))
+        self.ui.btnUser5.clicked.connect(partial(nxt_if_arm_init, 'initteachmode'))
 
         #CN: When ready to record current pose to teaching path
         self.ui.btnUser6.setText('Record Pose')
@@ -120,6 +120,9 @@ class Gui(QMainWindow):
         self.ui.btnUser9.setText('End Teach')
         self.ui.btnUser9.clicked.connect(partial(nxt_if_arm_init, 'endteach'))
 
+        #CN: When ready to replay a string of poses
+        self.ui.btnUser10.setText('Recital')
+        self.ui.btnUser10.clicked.connect(partial(nxt_if_arm_init, 'recital'))
         # Sliders
         for sldr in self.joint_sliders:
             sldr.valueChanged.connect(self.sliderChange)
@@ -243,8 +246,9 @@ class Gui(QMainWindow):
         pt = mouse_event.pos()
 
         "CN: adding code to convert pixel coords to world coors"
-        extMtx = np.array([[0,-1,0,175],[-1,0,0,0],[0,0,-1,976],[0,0,0,1]])
-        
+        # extMtx = np.array([[0,-1,0,175],[-1,0,0,0],[0,0,-1,976],[0,0,0,1]]) #OLD
+        # extMtx = np.array([[1,0,0,-14.1429],[0,-1,0,194.4616],[0,0,-1,978],[0,0,0,1]])
+        extMtx = np.array([[1,0,0,41],[0,-1,0,175],[0,0,-1,978],[0,0,0,1]])
 
         extMtxR = np.array([extMtx[0,0:3],extMtx[1,0:3],extMtx[2,0:3]])
         extMtxt = np.array([[extMtx[0,3]],[extMtx[1,3]],[extMtx[2,3]]])
@@ -261,10 +265,12 @@ class Gui(QMainWindow):
         # Kinv = np.linalg.inv(Kfactory)
 
 
-        Kteam =   np.array([[949.7594,0,650.1970],[0,949.3147,365.4619],[0,0,1.0000]])
+        # Kteam =   np.array([[949.7594,0,650.1970],[0,949.3147,365.4619],[0,0,1.0000]])
+        Kteam =   np.array([[954.6327,0,629.4831],[0,968.4867,386.4730],[0,0,1.0000]])
         Kinv = np.linalg.inv(Kteam)
 
-        Pteam = np.array([[979.8243,0,653.8207],[0,982.7768,369.4433],[0, 0, 1.0000]])
+        # Pteam = np.array([[979.8243,0,653.8207],[0,982.7768,369.4433],[0, 0, 1.0000]])
+        Pteam = np.array([[975.5068,0,628.0801],[0,993.6321,386.8233],[0, 0, 1.0000]])
         Pinv = np.linalg.inv(Pteam)
 
         if self.camera.DepthFrameRaw.any() != 0:
@@ -277,7 +283,7 @@ class Gui(QMainWindow):
             print "uv1 \n", uv1
             print "pinv \n", Pinv
             
-            xyz_c = z*np.matmul(Kinv,uv1)
+            xyz_c = z*np.matmul(Pinv,uv1)
             print "xyz_c \n", xyz_c
             print "Hinv \n", invExtMtx
             # input()
@@ -322,6 +328,7 @@ def main(args=None):
     app_window = Gui(dh_config_file=args['dhconfig'])
     app_window.show()
     sys.exit(app.exec_())
+
 
 
 # Run main if this file is being run directly
