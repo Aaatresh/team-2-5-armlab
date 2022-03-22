@@ -1,10 +1,12 @@
 """!
 The state machine that implements the logic.
 """
+from numpy import True_
 from PyQt4.QtCore import (QThread, Qt, pyqtSignal, pyqtSlot, QTimer)
 import time
 import numpy as np
 import rospy
+from datetime import datetime
 
 class StateMachine():
     """!
@@ -26,6 +28,8 @@ class StateMachine():
         self.status_message = "State: Idle"
         self.current_state = "idle"
         self.next_state = "idle"
+        self.gripcommand = 0
+        self.poses = [0,0,0,0,0,0]
         self.waypoints = [
             [-np.pi/2,       -0.5,      -0.3,            0.0,       0.0],
             [0.75*-np.pi/2,   0.5,      0.3,      0.0,       np.pi/2],
@@ -37,6 +41,9 @@ class StateMachine():
             [0.75*np.pi/2,   -0.5,     -0.3,     0.0,       np.pi/2],
             [np.pi/2,         0.5,     0.3,      0.0,     0.0],
             [0.0,             0.0,     0.0,      0.0,     0.0]]
+
+        self.waypointGrips = 0
+
 
     def set_next_state(self, state):
         """!
@@ -77,6 +84,27 @@ class StateMachine():
         if self.next_state == "manual":
             self.manual()
 
+        #CN: ADDED FOR TEACHING
+        if self.next_state == "initteachmode":
+            self.initteachmode()
+
+        if self.next_state == "teachmode":
+            self.teachmode()
+
+        if self.next_state == "recpose":
+            self.recpose()
+
+        if self.next_state == "gripstateO":
+            self.recposeGripO()
+
+        if self.next_state == "gripstateC":
+            self.recposeGripC()
+        
+        if self.next_state == "endteach":
+            self.endteach()
+
+        if self.next_state == "recital":
+            self.recital()
 
     """Functions run for each state"""
 
@@ -108,8 +136,31 @@ class StateMachine():
         TODO: Implement this function to execute a waypoint plan
               Make sure you respect estop signal
         """
+        numPoses = len(self.waypoints)
+        # print(numPoses)
+
         self.status_message = "State: Execute - Executing motion plan"
-        self.next_state = "idle"
+        estopPRESSED=0
+        for e,pose in enumerate(self.waypoints):
+            #if estop is pressed, go to estop state...
+            if self.next_state == "estop":
+                estopPRESSED = 1
+                break
+            #otherwise go to next pose
+            print(pose)
+            self.rxarm.set_positions(pose)
+            if self.waypointGrips[e] == 1:
+                self.rxarm.close_gripper()
+            else:
+                self.rxarm.open_gripper()
+            rospy.sleep(2.)
+            
+
+        
+        if estopPRESSED == 1:
+            self.next_state = "estop"
+        else:
+            self.next_state = "idle"
 
     def calibrate(self):
         """!
@@ -134,12 +185,72 @@ class StateMachine():
         """
         self.current_state = "initialize_rxarm"
         self.status_message = "RXArm Initialized!"
+        print("HERE! \n")
         if not self.rxarm.initialize():
             print('Failed to initialize the rxarm')
             self.status_message = "State: Failed to initialize the rxarm!"
             rospy.sleep(5)
         self.next_state = "idle"
 
+    def initteachmode(self):
+        self.status_message = "TEACH MODE - new pose array started, torque off"
+        self.current_state = "initteachmode"
+        self.rxarm.disable_torque() 
+        #create array for poses
+        self.poses = np.array([0,0,0,0,0,0]);
+        self.gripcommand = 0;
+        #format: [BASE ANGLE, SHOULDER ANGLE, ELBOW ANGLE, WRIST 1, WRIST 2, GRIP STATE]
+        rospy.sleep(2)
+        self.next_state="idleteachmode"
+
+    def teachmode(self):
+        self.status_message = "waiting for teach pose"
+        self.current_state = "idleteachmode"
+        self.rxarm.disable_torque() 
+        
+
+        #format: [BASE ANGLE, SHOULDER ANGLE, ELBOW ANGLE, WRIST 1, WRIST 2, GRIP STATE]
+    def recpose(self):
+        self.status_message = "Recording Current Pose"
+        self.current_state = "recpose"
+        newpose = self.rxarm.get_positions()
+        newpose = np.append(newpose,self.gripcommand)
+        self.poses = np.vstack((self.poses,newpose))
+        self.next_state="idleteachmode"
+
+
+
+    def recposeGripO(self): 
+        self.status_message = "Set Gripper State: Open"
+        self.current_state = "gripstateO"
+        self.gripcommand = 0
+        self.next_state="idleteachmode"
+    def recposeGripC(self):
+        self.status_message = "Set Gripper State: Closed"
+        self.current_state = "gripstateC"
+        self.gripcommand = 1
+        self.next_state="idleteachmode"
+
+    def endteach(self):
+        self.current_state = "endteach"
+        self.status_message = "Ending Teach! Exporting Pose Path to File"
+        now = datetime.now()
+        # mdyhms =  now.strftime("%m_%d_%Y__%H_%M_%S")
+        # csvname = "Poses_"+mdyhms+".csv"
+        csvname = "Poses.csv"
+        np.savetxt(csvname, self.poses, delimiter=",")
+        self.next_state="idle"
+
+    def recital(self):
+        self.current_state = "recital"
+        self.status_message = "Replaying waypoints from Teach"
+        
+        csvname = "Poses.csv"
+        fetchedCSV = np.genfromtxt(csvname, delimiter=",")
+
+        self.waypoints = fetchedCSV[1:,0:5]
+        self.waypointGrips = fetchedCSV[1:,5]
+        self.next_state="idle"
 class StateMachineThread(QThread):
     """!
     @brief      Runs the state machine
