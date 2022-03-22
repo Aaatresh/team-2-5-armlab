@@ -280,12 +280,12 @@ class Gui(QMainWindow):
             # camPt = np.array([[pt.x()],[pt.y()],[z],[1]])
             
             uv1 = np.array([[pt.x()],[pt.y()],[1]])
-            print "uv1 \n", uv1
-            print "pinv \n", Pinv
+            # print "uv1 \n", uv1
+            # print "pinv \n", Pinv
             
             xyz_c = z*np.matmul(Pinv,uv1)
-            print "xyz_c \n", xyz_c
-            print "Hinv \n", invExtMtx
+            # print "xyz_c \n", xyz_c
+            # print "Hinv \n", invExtMtx
             # input()
             
             xyz1_w = np.matmul(invExtMtx,np.array([[xyz_c[0,0]],[xyz_c[1,0]],[xyz_c[2,0]],[1]]))
