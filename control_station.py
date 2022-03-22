@@ -23,7 +23,7 @@ from PyQt4.QtGui import (QPixmap, QImage, QApplication, QWidget, QLabel,
 from ui import Ui_MainWindow
 from rxarm import RXArm, RXArmThread
 from camera import Camera, VideoThread
-from state_machine import StateMachine, StateMachineThread
+from state_machine import StateMachine, StateMachineThread, ExtMtx
 """ Radians to/from  Degrees conversions """
 D2R = np.pi / 180.0
 R2D = 180.0 / np.pi
@@ -248,8 +248,13 @@ class Gui(QMainWindow):
         "CN: adding code to convert pixel coords to world coors"
         # extMtx = np.array([[0,-1,0,175],[-1,0,0,0],[0,0,-1,976],[0,0,0,1]]) #OLD
         # extMtx = np.array([[1,0,0,-14.1429],[0,-1,0,194.4616],[0,0,-1,978],[0,0,0,1]])
-        extMtx = np.array([[1,0,0,41],[0,-1,0,175],[0,0,-1,978],[0,0,0,1]])
+        
+            # OLD METHOD (CHECKPT 1)
+        #extMtx = self.status_message = "RXArm Initialized!"
 
+        extMtx = self.camera.extrinsic_matrix
+        print("ExtMtx After\n")
+        print(extMtx)
         extMtxR = np.array([extMtx[0,0:3],extMtx[1,0:3],extMtx[2,0:3]])
         extMtxt = np.array([[extMtx[0,3]],[extMtx[1,3]],[extMtx[2,3]]])
 
@@ -257,10 +262,14 @@ class Gui(QMainWindow):
         negextMtxRinv_t = np.matmul(-extMtxRinv,extMtxt)
         # invExtMtx = np.array([[extMtxRinv[0,0:3], negextMtxRinv_t[0]],[extMtxRinv[1,0:3], negextMtxRinv_t[1]],[extMtxRinv[2,0:3], negextMtxRinv_t[2]],[0,0,0,1]])
         # print extMtxt
+
+    
         invExtMtx = np.block([
             [extMtxRinv,negextMtxRinv_t],
             [np.zeros((1,3)),np.ones((1,1))]
         ])
+
+        #invExtMtx = np.linalg.inv
         # Kfactory = np.array([904.317626953125, 0.0, 644.0140380859375], [0.0, 904.8245239257812, 360.77752685546875], [0.0, 0.0, 1.0])
         # Kinv = np.linalg.inv(Kfactory)
 
@@ -288,6 +297,8 @@ class Gui(QMainWindow):
             # print "Hinv \n", invExtMtx
             # input()
             
+            #print(invExtMtx.shape)
+
             xyz1_w = np.matmul(invExtMtx,np.array([[xyz_c[0,0]],[xyz_c[1,0]],[xyz_c[2,0]],[1]]))
             
             wpX = xyz1_w[0,0]
