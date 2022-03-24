@@ -253,8 +253,8 @@ class Gui(QMainWindow):
         #extMtx = self.status_message = "RXArm Initialized!"
 
         extMtx = self.camera.extrinsic_matrix
-        print("ExtMtx After\n")
-        print(extMtx)
+        # print("ExtMtx After\n")
+        # print(extMtx)
         extMtxR = np.array([extMtx[0,0:3],extMtx[1,0:3],extMtx[2,0:3]])
         extMtxt = np.array([[extMtx[0,3]],[extMtx[1,3]],[extMtx[2,3]]])
 
@@ -303,7 +303,8 @@ class Gui(QMainWindow):
             
             wpX = xyz1_w[0,0]
             wpY = xyz1_w[1,0]
-            wpZ = xyz1_w[2,0]
+            # wpZ = xyz1_w[2,0]
+            wpZ = 976-z #just use depth cam
             self.ui.rdoutMouseWorld.setText("(%.0f,%.0f,%.0f)" %
                                             (wpX,wpY,wpZ))
 

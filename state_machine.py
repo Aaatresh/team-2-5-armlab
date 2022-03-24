@@ -45,7 +45,7 @@ class StateMachine():
             [np.pi/2,         0.5,     0.3,      0.0,     0.0],
             [0.0,             0.0,     0.0,      0.0,     0.0]]
 
-        self.waypointGrips = 0
+        self.waypointGrips = 0 
         
 
     def set_next_state(self, state):
@@ -80,6 +80,7 @@ class StateMachine():
 
         if self.next_state == "calibrate":
             self.calibrate()
+            # self.status_message = "State: Calibrate - Waiting for input" 
 
         if self.next_state == "detect":
             self.detect()
@@ -170,30 +171,60 @@ class StateMachine():
         @brief      Gets the user input to perform the calibration
         """
         self.current_state = "calibrate"
-        self.next_state = "idle"
+        self.next_state = "calibrate"
+        self.status_message = "State: Calibrate - Waiting for input" 
 
         """TODO Perform camera calibration routine here"""
         global ExtMtx
         points3d = np.array([[-250, -25, 0],[250, -25, 0],[250, 275, 0],[-250, 275, 0]],dtype=np.float32)
-        points2d = np.array([[431,580],[905,581],[902,295],[434,295]],dtype=np.float32)
+        points2d = np.array([[431,580],[905,581],[902,295],[434,295]],dtype=np.float32) #camera at home position, hardcode loc of april
+
+        # for calpoints in points2d:
+        #     self.status_message = "Calibration - Click AprilTag1"
+        #     self.camera.new_click = False
+        #     pt = mouse_event.pos()
+
+        points2d = []
+        self.status_message = "Calibration - Click on points"
+        self.next_state = "idle"
+        # self.current_state = "calibrate"
+        for pt_num in range(4):
+
+            print("waiting for point ", str(pt_num+1))
+
+            self.status_message = "Calibration - Click AprilTag" + str(pt_num+1)
+
+            self.camera.new_click = False
+            while(self.camera.new_click == False):
+                pass
+
+            points2d.append([self.camera.last_click[0], self.camera.last_click[1]])
+
+        points2d = np.array(points2d, dtype=np.float32)
+
         Kteam =   np.array([[954.6327,0,629.4831],[0,968.4867,386.4730],[0,0,1.0000]],dtype=np.float32)
         Kinv = np.linalg.inv(Kteam)
         # self.camera.intrinsic_matrix = np.array([[904.3176, 0, 644.014],[0, 904.8245, 360.7775],[0,0,1]],dtype=np.float32)
 
         self.camera.intrinsic_matrix = Kteam
         
-        # distcoeff = np.array([0.1505,-0.2453,0.0002,-0.0014]).reshape((4,1)) # manual
-        distcoeff = np.array([0.5331,-0.4672,0.0003,-0.0011,0.4170])
+        distcoeff = np.array([0.1505,-0.2453,0.0002,-0.0014]).reshape((4,1)) # manual
+        # distcoeff = np.array([0.5331,-0.4672,0.0003,-0.0011,0.4170])
         success,rot_vec,t_vec = cv2.solvePnP(points3d,points2d,self.camera.intrinsic_matrix,distcoeff,flags=cv2.SOLVEPNP_ITERATIVE)
-        print(rot_vec)
+        print(success)
         # construct extrinsic matrix 
         RotMtx = cv2.Rodrigues(rot_vec)[0]
+
+        #Brute force adjust depth
+        # t_vec[2] -= 75
 
         ExtMtx = np.block([[RotMtx,t_vec],[0,0,0,1]])
         self.camera.extrinsic_matrix = ExtMtx
         # print("ExtMtx SHOULD BE\n")
         # print(ExtMtx)
         self.status_message = "Calibration - Completed Calibration"
+        self.next_state = "idle"
+
 
     """ TODO """
     def detect(self):
@@ -289,6 +320,7 @@ class StateMachineThread(QThread):
         """
         QThread.__init__(self, parent=parent)
         self.sm=state_machine
+        # self.sm.stm = self.updateStatusMessage
 
     def run(self):
         """!
