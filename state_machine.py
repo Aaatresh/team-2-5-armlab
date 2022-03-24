@@ -178,7 +178,10 @@ class StateMachine():
         points2d = np.array([[431,580],[905,581],[902,295],[434,295]],dtype=np.float32)
         Kteam =   np.array([[954.6327,0,629.4831],[0,968.4867,386.4730],[0,0,1.0000]],dtype=np.float32)
         Kinv = np.linalg.inv(Kteam)
-        self.camera.intrinsic_matrix = np.array([[904.3176, 0, 644.014],[0, 904.8245, 360.7775],[0,0,1]],dtype=np.float32)
+        # self.camera.intrinsic_matrix = np.array([[904.3176, 0, 644.014],[0, 904.8245, 360.7775],[0,0,1]],dtype=np.float32)
+
+        self.camera.intrinsic_matrix = Kteam
+        
         # distcoeff = np.array([0.1505,-0.2453,0.0002,-0.0014]).reshape((4,1)) # manual
         distcoeff = np.array([0.5331,-0.4672,0.0003,-0.0011,0.4170])
         success,rot_vec,t_vec = cv2.solvePnP(points3d,points2d,self.camera.intrinsic_matrix,distcoeff,flags=cv2.SOLVEPNP_ITERATIVE)
