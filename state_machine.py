@@ -305,6 +305,77 @@ class StateMachine():
         self.waypoints = fetchedCSV[1:,0:5]
         self.waypointGrips = fetchedCSV[1:,5]
         self.next_state="idle"
+
+    def plan_path(self, start_joint_position, final_joint_position, xyz_w):
+
+
+        final_joint_position_1 = inverse_kinematics(np.array([xyz_w[0], xyz_w[1], xyz_w[2] - 40]).reshape(-1, 1))
+        final_joint_position_2 = inverse_kinematics(np.array([xyz_w[0], xyz_w[1], xyz_w[2] - 70]).reshape(-1, 1))
+        final_joint_position_3 = inverse_kinematics(np.array([xyz_w[0], xyz_w[1], xyz_w[2] - 100]).reshape(-1, 1))
+
+        return [start_joint_position, final_joint_position_3, final_joint_position_2, final_joint_position_1,
+                final_joint_position]
+
+    def click2GrabNPlace(self):
+
+        Pteam = np.array([[975.5068, 0, 628.0801], [0, 993.6321, 386.8233], [0, 0, 1.0000]])
+        Pinv = np.linalg.inv(Pteam)
+
+        extMtx = self.camera.extrinsic_matrix
+        extMtxR = np.array([extMtx[0, 0:3], extMtx[1, 0:3], extMtx[2, 0:3]])
+        extMtxt = np.array([[extMtx[0, 3]], [extMtx[1, 3]], [extMtx[2, 3]]])
+
+        extMtxRinv = np.linalg.inv(extMtxR)
+        negextMtxRinv_t = np.matmul(-extMtxRinv, extMtxt)
+
+        invExtMtx = np.block([
+            [extMtxRinv, negextMtxRinv_t],
+            [np.zeros((1, 3)), np.ones((1, 1))]
+        ])
+
+        """ Click to grab """
+        self.camera.new_click = False
+        while(self.camera.new_click == False):
+            pass
+
+        pixel_point = np.array([self.camera.last_click[0], self.camera.last_click[1]]).reshape(-1, 1)
+        z = self.camera.DepthFrameRaw[pixel_point[1, 0]][pixel_point[0, 0]]
+
+        xyz_c = z * np.matmul(Pinv, pixel_point)
+        xyz_w = np.matmul(invExtMtx, np.array([[xyz_c[0, 0]], [xyz_c[1, 0]], [xyz_c[2, 0]], [1]]))
+
+        final_joint_state = inv_kinematics(xyz_w)
+        self.initialize_rxarm()
+
+        start_joint_state = self.rxarm.get_joint_positions()
+
+        # plan a path between start_joint_state and final_joint_state
+        self.waypoints = plan_path(start_joint_state, final_joint_state, xyz_w)
+        self.execute()
+
+        """Click to place"""
+        # TODO
+
+        self.camera.new_click = False
+        while (self.camera.new_click == False):
+            pass
+
+        pixel_point = np.array([self.camera.last_click[0], self.camera.last_click[1]]).reshape(-1, 1)
+        z = self.camera.DepthFrameRaw[pixel_point[1, 0]][pixel_point[0, 0]]
+
+        xyz_c = z * np.matmul(Pinv, pixel_point)
+        xyz_w = np.matmul(invExtMtx, np.array([[xyz_c[0, 0]], [xyz_c[1, 0]], [xyz_c[2, 0]], [1]]))
+
+        final_joint_state = inv_kinematics(xyz_w)
+
+        start_joint_state = self.rxarm.get_joint_positions()
+
+        # plan a path between start_joint_state and final_joint_state
+        self.waypoints = plan_path(start_joint_state, final_joint_state, xyz_w)
+        self.execute()
+
+        self.initialize_rxarm()
+
 class StateMachineThread(QThread):
     """!
     @brief      Runs the state machine
