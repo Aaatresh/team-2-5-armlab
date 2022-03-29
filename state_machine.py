@@ -306,15 +306,30 @@ class StateMachine():
         self.waypointGrips = fetchedCSV[1:,5]
         self.next_state="idle"
 
-    def plan_path(self, start_joint_position, final_joint_position, xyz_w):
+    def plan_and_execute(self, start_joint_position, final_joint_position, xyz_w, final_gripper_state="open"):
 
 
         final_joint_position_1 = inverse_kinematics(np.array([xyz_w[0], xyz_w[1], xyz_w[2] - 40]).reshape(-1, 1))
         final_joint_position_2 = inverse_kinematics(np.array([xyz_w[0], xyz_w[1], xyz_w[2] - 70]).reshape(-1, 1))
         final_joint_position_3 = inverse_kinematics(np.array([xyz_w[0], xyz_w[1], xyz_w[2] - 100]).reshape(-1, 1))
 
-        return [start_joint_position, final_joint_position_3, final_joint_position_2, final_joint_position_1,
+        # Go from start to final joint state
+        self.waypoints = [final_joint_position_3, final_joint_position_2, final_joint_position_1,
                 final_joint_position]
+        self.execute()
+
+        # Gripper state to grab/place block
+        if(final_gripper_state == "closed"):
+            self.rxarm.close_gripper()
+        elif(final_gripper_state == "open"):
+            self.rxarm.open_gripper()
+        else:
+            print("ERROR! Incorrect gripper state given...")
+
+        # Go from final to start joint state
+        self.waypoints = [final_joint_position_1, final_joint_position_2, final_joint_position_3,
+                          start_joint_position]
+        self.execute()
 
     def click2GrabNPlace(self):
 
@@ -334,6 +349,9 @@ class StateMachine():
         ])
 
         """ Click to grab """
+        print("Click point on screen to perform grabbing operation...")
+
+        # Wait for click
         self.camera.new_click = False
         while(self.camera.new_click == False):
             pass
@@ -347,15 +365,17 @@ class StateMachine():
         final_joint_state = inv_kinematics(xyz_w)
         self.initialize_rxarm()
 
+        # Make sure gripper is open
+        self.rxarm.open_gripper()
+
         start_joint_state = self.rxarm.get_joint_positions()
 
-        # plan a path between start_joint_state and final_joint_state
-        self.waypoints = plan_path(start_joint_state, final_joint_state, xyz_w)
-        self.execute()
+        # plan path to point, close gripper and plan a path back to its starting position
+        self.plan_and_execute(start_joint_state, final_joint_state, xyz_w, final_gripper_state="closed")
 
         """Click to place"""
-        # TODO
 
+        # Wait for click
         self.camera.new_click = False
         while (self.camera.new_click == False):
             pass
@@ -370,11 +390,10 @@ class StateMachine():
 
         start_joint_state = self.rxarm.get_joint_positions()
 
-        # plan a path between start_joint_state and final_joint_state
-        self.waypoints = plan_path(start_joint_state, final_joint_state, xyz_w)
-        self.execute()
+        # plan path to point, open gripper and plan a path back to its starting position
+        self.plan_and_execute(start_joint_state, final_joint_state, xyz_w,
+                                               final_gripper_state="open")
 
-        self.initialize_rxarm()
 
 class StateMachineThread(QThread):
     """!
