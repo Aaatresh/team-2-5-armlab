@@ -57,6 +57,72 @@ def show_image():
     cv2.imshow("Threshold window", aftersliders)
 
 
+# Python3 program change RGB Color
+# Model to HSV Color Model
+ 
+def bgr_to_hsv(b, g, r):
+ 
+    # R, G, B values are divided by 255
+    # to change the range from 0..255 to 0..1:
+    r, g, b = r / 255.0, g / 255.0, b / 255.0
+ 
+    # h, s, v = hue, saturation, value
+    cmax = max(r, g, b)    # maximum of r, g, b
+    cmin = min(r, g, b)    # minimum of r, g, b
+    diff = cmax-cmin       # diff of cmax and cmin.
+ 
+    # if cmax and cmax are equal then h = 0
+    if cmax == cmin:
+        h = 0
+     
+    # if cmax equal r then compute h
+    elif cmax == r:
+        h = (60 * ((g - b) / diff) + 360) % 360
+ 
+    # if cmax equal g then compute h
+    elif cmax == g:
+        h = (60 * ((b - r) / diff) + 120) % 360
+ 
+    # if cmax equal b then compute h
+    elif cmax == b:
+        h = (60 * ((r - g) / diff) + 240) % 360
+ 
+    # if cmax equal zero
+    if cmax == 0:
+        s = 0
+    else:
+        s = (diff / cmax) * 100
+ 
+    # compute v
+    v = cmax * 100
+    return h, s, v
+ 
+
+def retrieve_area_color(data, contour, labels):
+    colorfound = "none"
+    mask = np.zeros(data.shape[:2], dtype="uint8")
+    cv2.drawContours(mask, [contour], -1, 255, -1)
+    mean = np.uint8(cv2.mean(data, mask=mask)[:3])
+    meanHSV_h, meanHSV_s, meanHSV_v = bgr_to_hsv(mean[0],mean[1],mean[2])
+    meanHSV_h = meanHSV_h/2
+    for label in labels:
+        if label["color"][0] <= meanHSV_h <= label["color"][1]:
+            colorfound = label["id"]
+    if colorfound == "redHI" or colorfound == "redLO":
+        colorfound = "red"
+    return colorfound, meanHSV_h
+
+
+font = cv2.FONT_HERSHEY_SIMPLEX
+colors = list((
+    {'id': 'redHI', 'color': (170, 179)},
+    {'id': 'redLO', 'color': (0, 6)},
+    {'id': 'orange', 'color': (7, 15)},
+    {'id': 'yellow', 'color': (17, 38)},
+    {'id': 'green', 'color': (55, 94)},
+    {'id': 'blue', 'color': (84, 112)},
+    {'id': 'purple', 'color': (123, 173)})
+)
 img = 'armlab_opencv_examples-master/image_all_blocks.png'
 imgD = 'armlab_opencv_examples-master/depth_all_blocks.png'
 
@@ -90,11 +156,11 @@ cv2.rectangle(rgb_image, (573,117),(722,440), (255, 0, 0), 2)
 thresh = cv2.bitwise_and(cv2.inRange(depth_data, lower, upper), mask)
 
 # depending on your version of OpenCV, the following line could be:
-contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+contoursOG, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 # _, contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
 # print(depth_data.max())
-cv2.drawContours(rgb_image, contours, -1, (0,255,255), 3)
+cv2.drawContours(rgb_image, contoursOG, -1, (0,255,255), 3)
 print(thresh)
 # cv2.imshow("Threshold window", thresh)
 cv2.imshow("Image window", rgb_image)
@@ -132,16 +198,29 @@ cv2.createTrackbar("Val Low Limit", "Threshold window" , 0, 255, on_trackbar_val
 
 purpleLowHSV = np.array([0,0,0])
 purpleHighHSV = np.array([179,255,255])
-purple_hue = np.array([123,173])
+purple_hue = np.array([55,94])
+# purple_hue = np.array([123,173])
 purpleLowHSV[0] = purple_hue[0]
 purpleHighHSV[0] = purple_hue[1]
 purpleMask = cv2.inRange(imgMasked_hsv,purpleLowHSV,purpleHighHSV)
 purpleOnly = cv2.bitwise_and(imgMasked_rgb,imgMasked_rgb,mask=purpleMask)
 contours, _ = cv2.findContours(purpleMask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+viableContours = []
+for contour in contoursOG:
+    if cv2.contourArea(contour) > 200:
+        viableContours.append(contour)
+
 print(contours)
-cv2.drawContours(purpleOnly, contours, -1, (0,255,255), thickness=1)
+cv2.drawContours(purpleOnly, viableContours, -1, (0,255,255), thickness=1)
 cv2.namedWindow("Purple window", cv2.WINDOW_NORMAL)
 cv2.imshow("Purple window", purpleOnly)
+
+for contour in viableContours:
+    contourcolor, meanHSV = retrieve_area_color(rgbraw,contour,colors)
+    print(contourcolor)
+    print("H:",meanHSV)
+    print("area:",cv2.contourArea(contour))
+
 
 
 while True:
