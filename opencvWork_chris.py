@@ -123,8 +123,16 @@ colors = list((
     {'id': 'blue', 'color': (84, 112)},
     {'id': 'purple', 'color': (123, 173)})
 )
-img = 'armlab_opencv_examples-master/image_all_blocks.png'
-imgD = 'armlab_opencv_examples-master/depth_all_blocks.png'
+img = 'armlab_opencv_examples-master/image_blocks.png'
+imgD = 'armlab_opencv_examples-master/depth_blocks.png'
+
+annotate = {'red': (10, 10, 127),
+    'orange': (30, 75, 150),
+    'yellow': (30, 150, 200),
+    'green': (20, 60, 20),
+    'blue': (100, 50, 0),
+    'purple': (100, 40, 80),
+    'none': (0,0,0)}
 
 
 # img = 'armlab_opencv_examples-master/image_test.png'
@@ -210,18 +218,24 @@ for contour in contoursOG:
     if cv2.contourArea(contour) > 200:
         viableContours.append(contour)
 
-print(contours)
-cv2.drawContours(purpleOnly, viableContours, -1, (0,255,255), thickness=1)
-cv2.namedWindow("Purple window", cv2.WINDOW_NORMAL)
-cv2.imshow("Purple window", purpleOnly)
+
+
 
 for contour in viableContours:
     contourcolor, meanHSV = retrieve_area_color(rgbraw,contour,colors)
-    print(contourcolor)
-    print("H:",meanHSV)
-    print("area:",cv2.contourArea(contour))
+    # print(contourcolor)
+    annotateColor = annotate[contourcolor]
+    x = 30
+    annotateColor = [annotateColor[0]+x,annotateColor[1]+x,annotateColor[2]+x]
+    print(annotateColor)
+    #cv2.drawContours(rgbraw, [contour], -1, [0,255,255], thickness=2)
+    cv2.drawContours(rgbraw, [contour], -1, annotateColor, thickness=2)
 
 
+
+
+cv2.namedWindow("Annotation window", cv2.WINDOW_NORMAL)
+cv2.imshow("Annotation window", rgbraw)
 
 while True:
   k = cv2.waitKey(10)
