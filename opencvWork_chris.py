@@ -123,8 +123,8 @@ colors = list((
     {'id': 'blue', 'color': (84, 112)},
     {'id': 'purple', 'color': (123, 173)})
 )
-img = 'armlab_opencv_examples-master/image_blocks.png'
-imgD = 'armlab_opencv_examples-master/depth_blocks.png'
+img = 'armlab_opencv_examples-master/image_all_blocks.png'
+imgD = 'armlab_opencv_examples-master/depth_all_blocks.png'
 
 annotate = {'red': (10, 10, 127),
     'orange': (30, 75, 150),
