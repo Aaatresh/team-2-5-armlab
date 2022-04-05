@@ -220,29 +220,14 @@ for contour in contoursOG:
 
 
 
-
 for contour in viableContours:
     contourcolor, meanHSV = retrieve_area_color(rgbraw,contour,colors)
     # print(contourcolor)
     annotateColor = annotate[contourcolor]
     x = 30
     annotateColor = [annotateColor[0]+x,annotateColor[1]+x,annotateColor[2]+x]
-    print(annotateColor)
-    #cv2.drawContours(rgbraw, [contour], -1, [0,255,255], thickness=2)
-    cv2.drawContours(rgbraw, [contour], -1, annotateColor, thickness=2)
-
-
-
-
-
-
-for contour in viableContours:
-    contourcolor, meanHSV = retrieve_area_color(rgbraw,contour,colors)
-    # print(contourcolor)
-    annotateColor = annotate[contourcolor]
-    x = 30
-    annotateColor = [annotateColor[0]+x,annotateColor[1]+x,annotateColor[2]+x]
-    print(annotateColor)
+    # print(annotateColor)
+    
     #cv2.drawContours(rgbraw, [contour], -1, [0,255,255], thickness=2)
     # cv2.drawContours(rgbraw, [contour], -1, annotateColor, thickness=2)
     
