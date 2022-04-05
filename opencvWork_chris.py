@@ -115,13 +115,13 @@ def retrieve_area_color(data, contour, labels):
 
 font = cv2.FONT_HERSHEY_SIMPLEX
 colors = list((
-    {'id': 'redHI', 'color': (170, 179)},
+    {'id': 'redHI', 'color': (165, 179)},
     {'id': 'redLO', 'color': (0, 6)},
     {'id': 'orange', 'color': (7, 15)},
     {'id': 'yellow', 'color': (17, 38)},
     {'id': 'green', 'color': (55, 94)},
     {'id': 'blue', 'color': (84, 112)},
-    {'id': 'purple', 'color': (123, 173)})
+    {'id': 'purple', 'color': (123, 164)})
 )
 img = 'armlab_opencv_examples-master/image_all_blocks.png'
 imgD = 'armlab_opencv_examples-master/depth_all_blocks.png'
@@ -231,6 +231,33 @@ for contour in viableContours:
     #cv2.drawContours(rgbraw, [contour], -1, [0,255,255], thickness=2)
     cv2.drawContours(rgbraw, [contour], -1, annotateColor, thickness=2)
 
+
+
+
+
+
+for contour in viableContours:
+    contourcolor, meanHSV = retrieve_area_color(rgbraw,contour,colors)
+    # print(contourcolor)
+    annotateColor = annotate[contourcolor]
+    x = 30
+    annotateColor = [annotateColor[0]+x,annotateColor[1]+x,annotateColor[2]+x]
+    print(annotateColor)
+    #cv2.drawContours(rgbraw, [contour], -1, [0,255,255], thickness=2)
+    # cv2.drawContours(rgbraw, [contour], -1, annotateColor, thickness=2)
+    
+    # https://pyimagesearch.com/2016/02/01/opencv-center-of-contour/
+    # find centroids
+    M = cv2.moments(contour)
+    cX = int(M["m10"] / M["m00"])
+    cY = int(M["m01"] / M["m00"])
+	# draw the contour and center of the shape on the image
+	# cv2.drawContours(image, [c], -1, (0, 255, 0), 2)
+    cv2.circle(rgbraw, (cX, cY), 3, (255, 255, 255), -1)
+    # cv2.putText(rgbraw, "center", (cX - 20, cY - 20),
+        # cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+
+    cv2.drawContours(rgbraw, [contour], -1, annotateColor, thickness=2)
 
 
 
