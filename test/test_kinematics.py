@@ -31,7 +31,7 @@ if __name__ == '__main__':
     screws = np.array([xi1, xi2, xi3, xi4, xi5])
     gst0 = np.array([[1.0, 0.0, 0.0, 0.0],[0.0, 1.0, 0.0, 424.15],[0.0, 0.0, 1.0, 303.91],[0.0, 0.0, 0.0, 1]])
     ### Add arm configurations to test here
-    fk_angles = [[np.pi/2, 0.0, 0.0, np.pi/2, 0.0]]
+    fk_angles = [[-0.3850291967391968, -0.03834952041506767, 0.2960582971572876, 1.1136701107025146, -0.40650492906570435]]
 
     print('Test FK')
     fk_poses = []

@@ -2,6 +2,7 @@
 Class to represent the camera.
 """
 
+from tkinter import CENTER
 import cv2
 import time
 import numpy as np
@@ -25,6 +26,7 @@ class Camera():
         @brief      Construcfalsets a new instance.
         """
         self.VideoFrame = np.zeros((720, 1280, 3)).astype(np.uint8)
+        self.BlockFrame = np.zeros((720, 1280, 3)).astype(np.uint8)
         self.TagImageFrame = np.zeros((720, 1280, 3)).astype(np.uint8)
         self.DepthFrameRaw = np.zeros((720, 1280)).astype(np.uint16)
         """ Extra arrays for colormaping the depth image"""
@@ -44,6 +46,7 @@ class Camera():
         """ block info """
         self.block_contours = np.array([])
         self.block_detections = np.array([])
+        self.block_detectionsCAMCOORD = np.array([])
 
     def processVideoFrame(self):
         """!
@@ -113,17 +116,49 @@ class Camera():
         """
 
         try:
-            #frame = cv2.resize(self.TagImageFrame, (1280, 720))
-
-            self.blockDetector()
-
-            cv2.drawContours(self.VideoFrame, self.block_contours, ...)
-
+            frame = cv2.resize(self.TagImageFrame, (1280, 720))
             img = QImage(frame, frame.shape[1], frame.shape[0],
                          QImage.Format_RGB888)
             return img
         except:
             return None
+    def convertQtBlockImageFrame(self):
+        """!
+        @brief      Converts block image frame to format suitable for Qt
+
+        @return     QImage
+        """
+
+        frame = cv2.resize(self.BlockFrame, (1280, 720))
+        # #self.blockDetector()
+        # for contour in self.block_contours:
+        #     cv2.drawContours(frame, [contour], -1, [255,255,255], thickness=2)
+
+        # for coord in self.block_detectionsCAMCOORD:
+        #     cv2.circle(frame, (coord[0], coord[1]), 3, (255, 255, 255), -1)
+
+        self.blockDetector()
+                
+        img = QImage(frame, frame.shape[1], frame.shape[0],\
+                          QImage.Format_RGB888)
+
+        return img
+
+        # try:
+        #     frame = cv2.resize(self.VideoFrame, (1280, 720))
+        #     # self.blockDetector()1280
+
+        #     # for contour in self.block_contours:
+        #     #     cv2.drawContours(frame, [contour], -1, [255,255,255], thickness=2)
+
+        #     # for coord in self.block_detectionsCAMCOORD:
+        #     #     cv2.circle(frame, (coord[0], coord[1]), 3, (255, 255, 255), -1)
+            
+        #     img = QImage(frame, frame.shape[1], frame.shape[0],
+        #                  QImage.Format_RGB888)
+        #     return img
+        # except:
+        #     return None
 
     def getAffineTransform(self, coord1, coord2):
         """!
@@ -156,7 +191,185 @@ class Camera():
                     TODO: Implement your block detector here. You will need to locate blocks in 3D space and put their XYZ
                     locations in self.block_detections
         """
-        pass
+
+        self.BlockFrame = self.VideoFrame.copy()
+
+        rgb_image = self.BlockFrame
+        # Python3 program change RGB Color
+        # Model to HSV Color Model
+        
+        def bgr_to_hsv(b, g, r):
+        
+            # R, G, B values are divided by 255
+            # to change the range from 0..255 to 0..1:
+            r, g, b = r / 255.0, g / 255.0, b / 255.0
+        
+            # h, s, v = hue, saturation, value
+            cmax = max(r, g, b)    # maximum of r, g, b
+            cmin = min(r, g, b)    # minimum of r, g, b
+            diff = cmax-cmin       # diff of cmax and cmin.
+        
+            # if cmax and cmax are equal then h = 0
+            if cmax == cmin:
+                h = 0
+            
+            # if cmax equal r then compute h
+            elif cmax == r:
+                h = (60 * ((g - b) / diff) + 360) % 360
+        
+            # if cmax equal g then compute h
+            elif cmax == g:
+                h = (60 * ((b - r) / diff) + 120) % 360
+        
+            # if cmax equal b then compute h
+            elif cmax == b:
+                h = (60 * ((r - g) / diff) + 240) % 360
+        
+            # if cmax equal zero
+            if cmax == 0:
+                s = 0
+            else:
+                s = (diff / cmax) * 100
+        
+            # compute v
+            v = cmax * 100
+            return h, s, v
+        
+
+        def retrieve_area_color(data, contour, labels):
+            colorfound = "none"
+            mask = np.zeros(data.shape[:2], dtype="uint8")
+            cv2.drawContours(mask, [contour], -1, 255, -1)
+            mean = np.uint8(cv2.mean(data, mask=mask)[:3])
+            meanHSV_h, meanHSV_s, meanHSV_v = bgr_to_hsv(mean[0],mean[1],mean[2])
+            meanHSV_h = meanHSV_h/2
+            for label in labels:
+                if label["color"][0] <= meanHSV_h <= label["color"][1]:
+                    colorfound = label["id"]
+            if colorfound == "redHI" or colorfound == "redLO":
+                colorfound = "red"
+            return colorfound, meanHSV_h
+
+
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        colors = list((
+            {'id': 'redHI', 'color': (165, 179)},
+            {'id': 'redLO', 'color': (0, 6)},
+            {'id': 'orange', 'color': (7, 15)},
+            {'id': 'yellow', 'color': (17, 38)},
+            {'id': 'green', 'color': (55, 94)},
+            {'id': 'blue', 'color': (84, 112)},
+            {'id': 'purple', 'color': (123, 164)})
+        )
+        img = 'armlab_opencv_examples-master/image_all_blocks.png'
+        imgD = 'armlab_opencv_examples-master/depth_all_blocks.png'
+
+        annotate = {'red': (10, 10, 127),
+            'orange': (30, 75, 150),
+            'yellow': (30, 150, 200),
+            'green': (20, 60, 20),
+            'blue': (100, 50, 0),
+            'purple': (100, 40, 80),
+            'none': (0,0,0)}
+
+
+        # img = 'armlab_opencv_examples-master/image_test.png'
+        # imgD = 'armlab_opencv_examples-master/depth_test.png'
+
+
+        lower = 900
+        upper = 965
+
+        depth_data = self.DepthFrameRaw.copy()      
+
+
+        """mask out arm & outside board"""
+        scoot = 25
+        
+        mask = np.zeros_like(depth_data, dtype=np.uint8)
+        cv2.rectangle(mask, (200+scoot,117),(573+scoot,718), 255, cv2.FILLED)
+        cv2.rectangle(mask, (722+scoot,117),(1100+scoot,719), 255, cv2.FILLED)
+        cv2.rectangle(mask, (573+scoot,117),(722+scoot,440), 255, cv2.FILLED)
+
+        rgbraw = rgb_image.copy() #make a copy without markup
+
+        cv2.rectangle(rgb_image, (200+scoot,117),(573+scoot,718), (255, 0, 0), 2)
+        cv2.rectangle(rgb_image, (722+scoot,117),(1100+scoot,719), (255, 0, 0), 2)
+        cv2.rectangle(rgb_image, (573+scoot,117),(722+scoot,440), (255, 0, 0), 2)
+
+        # cv2.rectangle(rgb_image, (575,414),(723,720), (255, 0, 0), 2)
+        # print(depth_data)
+        thresh = cv2.bitwise_and(cv2.inRange(depth_data, lower, upper), mask)
+        # self.BlockFrame = thresh.copy()
+
+        # # print(thresh)
+        # depending on your version of OpenCV, the following line could be:
+        # return_vals = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        # print("return vals: ", return_vals)
+
+        # contoursOG, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        _, contoursOG, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        # cv2.drawContours(rgb_image, contoursOG, -1, (0,255,255), 3)
+
+        # we have the masked depth and area, now colorize the mask
+        imgMasked_rgb = cv2.bitwise_and(rgbraw,rgbraw,mask=thresh)
+        imgMasked_hsv = cv2.cvtColor(imgMasked_rgb,cv2.COLOR_BGR2HSV)
+
+        redLowHSV = np.array([0,0,0])
+        redHighHSV = np.array([179,255,255])
+        RedMask = cv2.inRange(imgMasked_hsv,redLowHSV,redHighHSV)
+        redsOnly = cv2.bitwise_and(imgMasked_rgb,imgMasked_rgb,mask=RedMask)
+
+        # ###Done identifying color ranges, now use contours to id pixel regions corresponding to blocks
+
+        # ###block pixel sets id-ed, now check their avg color to see which of our ranges it falls in
+
+        purpleLowHSV = np.array([0,0,0])
+        purpleHighHSV = np.array([179,255,255])
+        purple_hue = np.array([55,94])
+        # purple_hue = np.array([123,173])
+        purpleLowHSV[0] = purple_hue[0]
+        purpleHighHSV[0] = purple_hue[1]
+        purpleMask = cv2.inRange(imgMasked_hsv,purpleLowHSV,purpleHighHSV)
+        purpleOnly = cv2.bitwise_and(imgMasked_rgb,imgMasked_rgb,mask=purpleMask)
+        _, contours, _ = cv2.findContours(purpleMask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        viableContours = []
+        for contour in contoursOG:
+            if cv2.contourArea(contour) > 200:
+                viableContours.append(contour)
+
+
+        centroids = []
+        centroidsCAMCOORD = []
+        for contour in viableContours:
+            contourcolor, meanHSV = retrieve_area_color(rgbraw,contour,colors)
+
+            annotateColor = annotate[contourcolor]
+            x = 30
+            annotateColor = [annotateColor[0]+x,annotateColor[1]+x,annotateColor[2]+x]
+            # cv2.drawContours(rgb_image, contour, -1, annotateColor, 3)
+            
+            # cv2.drawContours(rgbraw, [contour], -1, [0,255,255], thickness=2)
+            # cv2.drawContours(rgbraw, [contour], -1, annotateColor, thickness=2)
+            
+            # https://pyimagesearch.com/2016/02/01/opencv-center-of-contour/
+            # find centroids
+            M = cv2.moments(contour)
+            cX = int(M["m10"] / M["m00"])
+            cY = int(M["m01"] / M["m00"])
+            
+            worldCoordCentroid = self.camXY2worldXYZ(cX,cY)
+            centroids.append(worldCoordCentroid)
+          
+          
+            centroidsCAMCOORD.append([cX,cY])
+
+        cv2.drawContours(rgb_image, viableContours, -1, (0,255,255), 3)
+        self.block_detections = np.array(centroids)
+        self.block_detectionsCAMCOORD = np.array(centroidsCAMCOORD)
+        self.block_contours = np.array(viableContours)
 
     def detectBlocksInDepthImage(self):
         """!
@@ -166,6 +379,43 @@ class Camera():
         """
         pass
 
+    def camXY2worldXYZ(self,camX,camY):
+
+        extMtx = self.extrinsic_matrix
+        # print("ExtMtx After\n")
+        # print(extMtx)
+        extMtxR = np.array([extMtx[0,0:3],extMtx[1,0:3],extMtx[2,0:3]])
+        extMtxt = np.array([[extMtx[0,3]],[extMtx[1,3]],[extMtx[2,3]]])
+
+        extMtxRinv = np.linalg.inv(extMtxR)
+        negextMtxRinv_t = np.matmul(-extMtxRinv,extMtxt)
+
+        invExtMtx = np.block([
+            [extMtxRinv,negextMtxRinv_t],
+            [np.zeros((1,3)),np.ones((1,1))]
+        ])
+
+        Kteam =   np.array([[954.6327,0,629.4831],[0,968.4867,386.4730],[0,0,1.0000]])
+        Kinv = np.linalg.inv(Kteam)
+
+        Pteam = np.array([[975.5068,0,628.0801],[0,993.6321,386.8233],[0, 0, 1.0000]])
+        Pinv = np.linalg.inv(Pteam)
+
+        if self.DepthFrameRaw.any() != 0:
+            z = self.DepthFrameRaw[camY][camX]
+            
+            uv1 = np.array([[camX],[camY],[1]])
+     
+            xyz_c = z*np.matmul(Pinv,uv1)
+ 
+            xyz1_w = np.matmul(invExtMtx,np.array([[xyz_c[0,0]],[xyz_c[1,0]],[xyz_c[2,0]],[1]]))
+            
+            wpX = xyz1_w[0,0]
+            wpY = xyz1_w[1,0]
+            # wpZ = xyz1_w[2,0]
+            wpZ = 976-z #just use depth cam
+
+        return wpX, wpY, wpZ
 
 class ImageListener:
     def __init__(self, topic, camera):
@@ -243,7 +493,7 @@ class DepthListener:
 
 
 class VideoThread(QThread):
-    updateFrame = pyqtSignal(QImage, QImage, QImage)
+    updateFrame = pyqtSignal(QImage, QImage, QImage, QImage)
 
     def __init__(self, camera, parent=None):
         QThread.__init__(self, parent=parent)
@@ -253,12 +503,20 @@ class VideoThread(QThread):
         camera_info_topic = "/camera/color/camera_info"
         tag_image_topic = "/tag_detections_image"
         tag_detection_topic = "/tag_detections"
+        block_image_topic = "/block_detections_image"
+        block_detection_topic = "/block_detections"
+
         image_listener = ImageListener(image_topic, self.camera)
         depth_listener = DepthListener(depth_topic, self.camera)
         tag_image_listener = TagImageListener(tag_image_topic, self.camera)
+
+        block_image_listener = TagImageListener(block_image_topic, self.camera)
+
         camera_info_listener = CameraInfoListener(camera_info_topic,
                                                   self.camera)
         tag_detection_listener = TagDetectionListener(tag_detection_topic,
+                                                      self.camera)
+        block_detection_listener = TagDetectionListener(block_detection_topic,
                                                       self.camera)
 
     def run(self):
@@ -271,9 +529,10 @@ class VideoThread(QThread):
             rgb_frame = self.camera.convertQtVideoFrame()
             depth_frame = self.camera.convertQtDepthFrame()
             tag_frame = self.camera.convertQtTagImageFrame()
+            block_frame = self.camera.convertQtBlockImageFrame()
 
             if ((rgb_frame != None) & (depth_frame != None)):
-                self.updateFrame.emit(rgb_frame, depth_frame, tag_frame)
+                self.updateFrame.emit(rgb_frame, depth_frame, tag_frame, block_frame)
             time.sleep(0.03)
             if __name__ == '__main__':
                 cv2.imshow(
