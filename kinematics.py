@@ -162,7 +162,7 @@ def to_s_matrix(w, v, th):
     ])
     return res
 
-def IK_pox(pose, m_mat, s_lst):
+def IK_pox(pose):
     # TODO: Throw an error if unreachable
     """!
     @brief      Get all possible joint configs that produce the pose.
@@ -176,6 +176,15 @@ def IK_pox(pose, m_mat, s_lst):
     @return     All four possible joint configurations in a numpy array 4x4 where each row is one possible joint
                 configuration
     """
+
+    xi1 = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 1.0])
+    xi2 = np.array([0.0, -103.91, 0.0, -1.0, 0.0, 0.0])
+    xi3 = np.array([0.0, -303.91, 50.0, -1.0, 0.0, 0.0])
+    xi4 = np.array([0.0, -303.91, 250.0, -1.0, 0.0, 0.0])
+    xi5 = np.array([-303.91, 0.0, 0.0, 0.0, 1.0, 0.0])
+    s_lst = np.array([xi1, xi2, xi3, xi4, xi5])
+    m_mat = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 424.15], [0.0, 0.0, 1.0, 303.91], [0.0, 0.0, 0.0, 1]])
+
     gd = pose_to_T(pose)
     # print('gd =')
     # print(gd)
