@@ -8,6 +8,9 @@ import numpy as np
 import rospy
 from datetime import datetime
 import cv2 as cv2
+
+from kinematics import IK_pox
+
 ExtMtx = np.eye(4)
 # ExtMtx = np.array([[1,0,0,41],[0,-1,0,175],[0,0,-1,978],[0,0,0,1]]); #BY HAND 
 class StateMachine():
@@ -309,9 +312,12 @@ class StateMachine():
     def plan_and_execute(self, start_joint_position, final_joint_position, xyz_w, final_gripper_state="open"):
 
 
-        final_joint_position_1 = inverse_kinematics(np.array([xyz_w[0], xyz_w[1], xyz_w[2] - 40]).reshape(-1, 1))
-        final_joint_position_2 = inverse_kinematics(np.array([xyz_w[0], xyz_w[1], xyz_w[2] - 70]).reshape(-1, 1))
-        final_joint_position_3 = inverse_kinematics(np.array([xyz_w[0], xyz_w[1], xyz_w[2] - 100]).reshape(-1, 1))
+        final_joint_position_1 = IK_pox(np.array([xyz_w[0], xyz_w[1], xyz_w[2] + 40,
+                                                              -np.pi/2, 0, 0]).reshape(-1, 1))
+        final_joint_position_2 = IK_pox(np.array([xyz_w[0], xyz_w[1], xyz_w[2] + 70,
+                                                              -np.pi/2, 0, 0]).reshape(-1, 1))
+        final_joint_position_3 = IK_pox(np.array([xyz_w[0], xyz_w[1], xyz_w[2] + 100,
+                                                              -np.pi/2, 0, 0]).reshape(-1, 1))
 
         # Go from start to final joint state
         self.waypoints = [final_joint_position_3, final_joint_position_2, final_joint_position_1,
@@ -336,6 +342,7 @@ class StateMachine():
         Pteam = np.array([[975.5068, 0, 628.0801], [0, 993.6321, 386.8233], [0, 0, 1.0000]])
         Pinv = np.linalg.inv(Pteam)
 
+        # extMtx = np.array([[1,0,0,-14.1429],[0,-1,0,194.4616],[0,0,-1,978],[0,0,0,1]])
         extMtx = self.camera.extrinsic_matrix
         extMtxR = np.array([extMtx[0, 0:3], extMtx[1, 0:3], extMtx[2, 0:3]])
         extMtxt = np.array([[extMtx[0, 3]], [extMtx[1, 3]], [extMtx[2, 3]]])
@@ -362,7 +369,17 @@ class StateMachine():
         xyz_c = z * np.matmul(Pinv, pixel_point)
         xyz_w = np.matmul(invExtMtx, np.array([[xyz_c[0, 0]], [xyz_c[1, 0]], [xyz_c[2, 0]], [1]]))
 
-        final_joint_state = inv_kinematics(xyz_w)
+        position = np.reshape(xyz_w[:4], (3,))
+
+        # pose = [position, orientation]
+        pose = np.append(position, [[-np.pi/2, 0, 0]])
+
+        print("xyz world: ", xyz_w)
+        print("pose: ", pose)
+        print("pose shape: ", pose.shape)
+        exit()
+
+        final_joint_state = IK_pox(pose)
         self.initialize_rxarm()
 
         # Make sure gripper is open
@@ -386,7 +403,16 @@ class StateMachine():
         xyz_c = z * np.matmul(Pinv, pixel_point)
         xyz_w = np.matmul(invExtMtx, np.array([[xyz_c[0, 0]], [xyz_c[1, 0]], [xyz_c[2, 0]], [1]]))
 
-        final_joint_state = inv_kinematics(xyz_w)
+        position = np.reshape(xyz_w[:4], (3, ))
+
+        pose = np.append(position, [[-np.pi/2, 0, 0]])
+
+        print("xyz world: ", xyz_w)
+        print("pose: ", pose)
+        print("pose shape: ", pose.shape)
+        exit()
+
+        final_joint_state = IK_pox(pose)
 
         start_joint_state = self.rxarm.get_joint_positions()
 
@@ -400,7 +426,7 @@ class StateMachineThread(QThread):
     @brief      Runs the state machine
     """
     updateStatusMessage = pyqtSignal(str)
-    
+
     def __init__(self, state_machine, parent=None):
         """!
         @brief      Constructs a new instance.
