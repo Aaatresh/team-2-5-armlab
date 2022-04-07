@@ -113,6 +113,9 @@ class StateMachine():
         if self.next_state == "recital":
             self.recital()
 
+        if self.next_state == "grabclick":
+            self.click2GrabNPlace()
+
     """Functions run for each state"""
 
     def manual(self):
