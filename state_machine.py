@@ -336,6 +336,7 @@ class StateMachine():
         Pteam = np.array([[975.5068, 0, 628.0801], [0, 993.6321, 386.8233], [0, 0, 1.0000]])
         Pinv = np.linalg.inv(Pteam)
 
+        # extMtx = np.array([[1,0,0,-14.1429],[0,-1,0,194.4616],[0,0,-1,978],[0,0,0,1]])
         extMtx = self.camera.extrinsic_matrix
         extMtxR = np.array([extMtx[0, 0:3], extMtx[1, 0:3], extMtx[2, 0:3]])
         extMtxt = np.array([[extMtx[0, 3]], [extMtx[1, 3]], [extMtx[2, 3]]])
@@ -362,7 +363,17 @@ class StateMachine():
         xyz_c = z * np.matmul(Pinv, pixel_point)
         xyz_w = np.matmul(invExtMtx, np.array([[xyz_c[0, 0]], [xyz_c[1, 0]], [xyz_c[2, 0]], [1]]))
 
-        final_joint_state = inv_kinematics(xyz_w)
+        position = np.reshape(xyz_w[:4], (3,))
+
+        # pose = [position, orientation]
+        pose = np.append(position, [[-np.pi/2, 0, 0]])
+
+        print("xyz world: ", xyz_w)
+        print("pose: ", pose)
+        print("pose shape: ", pose.shape)
+        exit()
+
+        final_joint_state = inv_kinematics(pose)
         self.initialize_rxarm()
 
         # Make sure gripper is open
@@ -400,7 +411,7 @@ class StateMachineThread(QThread):
     @brief      Runs the state machine
     """
     updateStatusMessage = pyqtSignal(str)
-    
+
     def __init__(self, state_machine, parent=None):
         """!
         @brief      Constructs a new instance.
