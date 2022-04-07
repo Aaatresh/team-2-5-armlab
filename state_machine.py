@@ -8,6 +8,9 @@ import numpy as np
 import rospy
 from datetime import datetime
 import cv2 as cv2
+
+from kinematics import IK_pox
+
 ExtMtx = np.eye(4)
 # ExtMtx = np.array([[1,0,0,41],[0,-1,0,175],[0,0,-1,978],[0,0,0,1]]); #BY HAND 
 class StateMachine():
@@ -110,6 +113,9 @@ class StateMachine():
         if self.next_state == "recital":
             self.recital()
 
+        if self.next_state == "grabclick":
+            self.click2GrabNPlace()
+
     """Functions run for each state"""
 
     def manual(self):
@@ -160,6 +166,37 @@ class StateMachine():
             rospy.sleep(2.)
             
 
+        
+        if estopPRESSED == 1:
+            self.next_state = "estop"
+        else:
+            self.next_state = "idle"
+
+    def execute_click2grab(self):
+        """!
+        @brief      Go through all waypoints
+        TODO: Implement this function to execute a waypoint plan
+              Make sure you respect estop signal
+        """
+        numPoses = len(self.waypoints)
+        # print(numPoses)
+
+        self.status_message = "State: Execute - Executing motion plan"
+        estopPRESSED=0
+        for e,pose in enumerate(self.waypoints):
+            #if estop is pressed, go to estop state...
+            if self.next_state == "estop":
+                estopPRESSED = 1
+                break
+            #otherwise go to next pose
+            # print(pose)
+            self.rxarm.set_positions(pose)
+            # if self.waypointGrips[e] == 1:
+            #     self.rxarm.close_gripper()
+            # else:
+            #     self.rxarm.open_gripper()
+            rospy.sleep(2.)
+            
         
         if estopPRESSED == 1:
             self.next_state = "estop"
@@ -305,12 +342,138 @@ class StateMachine():
         self.waypoints = fetchedCSV[1:,0:5]
         self.waypointGrips = fetchedCSV[1:,5]
         self.next_state="idle"
+
+    def plan_and_execute(self, start_joint_position, final_joint_position, xyz_w, final_gripper_state="open"):
+
+
+        final_joint_position_1 = IK_pox(np.array([xyz_w[0], xyz_w[1], xyz_w[2] + 50.0,
+                                                              -np.pi/2.0, 0.0, 0.0], dtype=np.float32))
+        final_joint_position_1[2] = final_joint_position_1[2]*-1
+        final_joint_position_1[3] = final_joint_position_1[3]*-1
+        final_joint_position_2 = IK_pox(np.array([xyz_w[0], xyz_w[1], xyz_w[2] + 70.0,
+                                                              -np.pi/2.0, 0.0, 0.0], dtype=np.float32))
+        final_joint_position_3 = IK_pox(np.array([xyz_w[0], xyz_w[1], xyz_w[2] + 100.0,
+                                                              -np.pi/2.0, 0.0, 0.0], dtype=np.float32))
+
+        # Go from start to final joint state
+        self.waypoints = [final_joint_position_1, final_joint_position]
+        print("waypoints: ", self.waypoints)
+        hold = input()
+        self.execute_click2grab()
+
+        print("first execute!")
+
+        # Gripper state to grab/place block
+        if(final_gripper_state == "closed"):
+            self.rxarm.close_gripper()
+        elif(final_gripper_state == "open"):
+            self.rxarm.open_gripper()
+        else:
+            print("ERROR! Incorrect gripper state given...")
+
+        # Go from final to start joint state
+        self.waypoints = [final_joint_position_1,
+                          start_joint_position]
+        self.execute_click2grab()
+
+    def click2GrabNPlace(self):
+
+        Pteam = np.array([[975.5068, 0, 628.0801], [0, 993.6321, 386.8233], [0, 0, 1.0000]])
+        Pinv = np.linalg.inv(Pteam)
+
+        # extMtx = np.array([[1,0,0,-14.1429],[0,-1,0,194.4616],[0,0,-1,978],[0,0,0,1]])
+        extMtx = self.camera.extrinsic_matrix
+        extMtxR = np.array([extMtx[0, 0:3], extMtx[1, 0:3], extMtx[2, 0:3]])
+        extMtxt = np.array([[extMtx[0, 3]], [extMtx[1, 3]], [extMtx[2, 3]]])
+
+        extMtxRinv = np.linalg.inv(extMtxR)
+        negextMtxRinv_t = np.matmul(-extMtxRinv, extMtxt)
+
+        invExtMtx = np.block([
+            [extMtxRinv, negextMtxRinv_t],
+            [np.zeros((1, 3)), np.ones((1, 1))]
+        ])
+
+        """ Click to grab """
+        print("Click point on screen to perform grabbing operation...")
+
+        # Wait for click
+        self.camera.new_click = False
+        while(self.camera.new_click == False):
+            pass
+
+        pixel_point = np.array([self.camera.last_click[0], self.camera.last_click[1], 1]).reshape(-1, 1)
+        z = self.camera.DepthFrameRaw[pixel_point[1, 0]][pixel_point[0, 0]]
+        print("pixel_point: ", pixel_point)
+        print("z = ", z)
+        xyz_c = z * np.matmul(Pinv, pixel_point)
+        xyz_w = np.matmul(invExtMtx, np.array([[xyz_c[0, 0]], [xyz_c[1, 0]], [xyz_c[2,0]], [1]]))
+        xyz_w[2,0] = 976 - z
+
+        position = np.reshape(xyz_w[:3], (3,))
+
+        # pose = [position, orientation]
+        pose = np.append(position, [[-np.pi/2, 0, 0]])
+
+        print("pose: ", pose)
+
+        final_joint_state = IK_pox(pose)
+        final_joint_state[2] = final_joint_state[2]*-1
+        final_joint_state[3] = final_joint_state[3]*-1
+
+        print("final joint state: ", final_joint_state)
+
+        self.initialize_rxarm()
+
+        # Make sure gripper is open
+        self.rxarm.open_gripper()
+        time.sleep(2)
+        start_joint_state = self.rxarm.get_positions()
+
+        print("joint positions: ", start_joint_state)
+        print("final joint position: ", final_joint_state)
+
+        # plan path to point, close gripper and plan a path back to its starting position
+        self.plan_and_execute(start_joint_state, final_joint_state, xyz_w, final_gripper_state="closed")
+
+        """Click to place"""
+
+        # Wait for click
+        self.camera.new_click = False
+        while (self.camera.new_click == False):
+            pass
+
+        pixel_point = np.array([self.camera.last_click[0], self.camera.last_click[1], 1]).reshape(-1, 1)
+        z = self.camera.DepthFrameRaw[pixel_point[1, 0]][pixel_point[0, 0]]
+
+        xyz_c = z * np.matmul(Pinv, pixel_point)
+        xyz_w = np.matmul(invExtMtx, np.array([[xyz_c[0, 0]], [xyz_c[1, 0]], [xyz_c[2, 0]], [1]]))
+
+        position = np.reshape(xyz_w[:3], (3, ))
+
+        pose = np.append(position, [[-np.pi/2, 0, 0]])
+
+        print("xyz world: ", xyz_w)
+        print("pose: ", pose)
+        print("pose shape: ", pose.shape)
+
+        final_joint_state = IK_pox(pose)
+        final_joint_state[2] = final_joint_state[2]*-1
+        final_joint_state[3] = final_joint_state[3]*-1
+
+        start_joint_state = self.rxarm.get_joint_positions()
+
+        # plan path to point, open gripper and plan a path back to its starting position
+        self.plan_and_execute(start_joint_state, final_joint_state, xyz_w,
+                                               final_gripper_state="open")
+
+
 class StateMachineThread(QThread):
     """!
     @brief      Runs the state machine
     """
     updateStatusMessage = pyqtSignal(str)
-    
+
     def __init__(self, state_machine, parent=None):
         """!
         @brief      Constructs a new instance.

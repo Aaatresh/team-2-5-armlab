@@ -170,8 +170,8 @@ def IK_pox(pose):
                 TODO: Convert a desired end-effector pose as np.array (x,y,z,psi,theta,phi) to joint angles
 
     @param      pose        The desired pose as np.array (x,y,z,psi,theta,phi)
-    @param      m_mat       The M matrix
-    @param      s_lst       List of screw vectors
+    # @param      m_mat       The M matrix
+    # @param      s_lst       List of screw vectors
 
     @return     All four possible joint configurations in a numpy array 4x4 where each row is one possible joint
                 configuration
