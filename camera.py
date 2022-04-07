@@ -113,7 +113,12 @@ class Camera():
         """
 
         try:
-            frame = cv2.resize(self.TagImageFrame, (1280, 720))
+            #frame = cv2.resize(self.TagImageFrame, (1280, 720))
+
+            self.blockDetector()
+
+            cv2.drawContours(self.VideoFrame, self.block_contours, ...)
+
             img = QImage(frame, frame.shape[1], frame.shape[0],
                          QImage.Format_RGB888)
             return img
@@ -266,6 +271,7 @@ class VideoThread(QThread):
             rgb_frame = self.camera.convertQtVideoFrame()
             depth_frame = self.camera.convertQtDepthFrame()
             tag_frame = self.camera.convertQtTagImageFrame()
+
             if ((rgb_frame != None) & (depth_frame != None)):
                 self.updateFrame.emit(rgb_frame, depth_frame, tag_frame)
             time.sleep(0.03)
