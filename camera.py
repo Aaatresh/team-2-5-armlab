@@ -278,22 +278,24 @@ class Camera():
 
 
         lower = 900
-        upper = 975
+        upper = 965
 
         depth_data = self.DepthFrameRaw.copy()      
 
 
         """mask out arm & outside board"""
+        scoot = 25
+        
         mask = np.zeros_like(depth_data, dtype=np.uint8)
-        cv2.rectangle(mask, (200,117),(573,718), 255, cv2.FILLED)
-        cv2.rectangle(mask, (722,117),(1100,719), 255, cv2.FILLED)
-        cv2.rectangle(mask, (573,117),(722,440), 255, cv2.FILLED)
+        cv2.rectangle(mask, (200+scoot,117),(573+scoot,718), 255, cv2.FILLED)
+        cv2.rectangle(mask, (722+scoot,117),(1100+scoot,719), 255, cv2.FILLED)
+        cv2.rectangle(mask, (573+scoot,117),(722+scoot,440), 255, cv2.FILLED)
 
         rgbraw = rgb_image.copy() #make a copy without markup
 
-        cv2.rectangle(rgb_image, (200,117),(573,718), (255, 0, 0), 2)
-        cv2.rectangle(rgb_image, (722,117),(1100,719), (255, 0, 0), 2)
-        cv2.rectangle(rgb_image, (573,117),(722,440), (255, 0, 0), 2)
+        cv2.rectangle(rgb_image, (200+scoot,117),(573+scoot,718), (255, 0, 0), 2)
+        cv2.rectangle(rgb_image, (722+scoot,117),(1100+scoot,719), (255, 0, 0), 2)
+        cv2.rectangle(rgb_image, (573+scoot,117),(722+scoot,440), (255, 0, 0), 2)
 
         # cv2.rectangle(rgb_image, (575,414),(723,720), (255, 0, 0), 2)
         # print(depth_data)
@@ -309,8 +311,7 @@ class Camera():
         # contoursOG, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         _, contoursOG, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        # print(depth_data.max())
-        cv2.drawContours(rgb_image, contoursOG, -1, (0,255,255), 3)
+        # cv2.drawContours(rgb_image, contoursOG, -1, (0,255,255), 3)
 
         # we have the masked depth and area, now colorize the mask
         imgMasked_rgb = cv2.bitwise_and(rgbraw,rgbraw,mask=thresh)
@@ -344,13 +345,13 @@ class Camera():
         centroidsCAMCOORD = []
         for contour in viableContours:
             contourcolor, meanHSV = retrieve_area_color(rgbraw,contour,colors)
-            # print(contourcolor)
+
             annotateColor = annotate[contourcolor]
             x = 30
             annotateColor = [annotateColor[0]+x,annotateColor[1]+x,annotateColor[2]+x]
-            # print(annotateColor)
+            # cv2.drawContours(rgb_image, contour, -1, annotateColor, 3)
             
-            #cv2.drawContours(rgbraw, [contour], -1, [0,255,255], thickness=2)
+            # cv2.drawContours(rgbraw, [contour], -1, [0,255,255], thickness=2)
             # cv2.drawContours(rgbraw, [contour], -1, annotateColor, thickness=2)
             
             # https://pyimagesearch.com/2016/02/01/opencv-center-of-contour/
@@ -361,12 +362,11 @@ class Camera():
             
             worldCoordCentroid = self.camXY2worldXYZ(cX,cY)
             centroids.append(worldCoordCentroid)
-            # print("Contour XYZ:\n")
-            # print(cX)
-            # print(cY)
+          
+          
             centroidsCAMCOORD.append([cX,cY])
 
-
+        cv2.drawContours(rgb_image, viableContours, -1, (0,255,255), 3)
         self.block_detections = np.array(centroids)
         self.block_detectionsCAMCOORD = np.array(centroidsCAMCOORD)
         self.block_contours = np.array(viableContours)
