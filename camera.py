@@ -367,8 +367,8 @@ class Camera():
 
         centroids = []
         centroidsCAMCOORD = []
-        self.block_colors = []
-        self.block_colors_H = []
+        del self.block_colors[:]
+        del self.block_colors_H[:]
         for contour in viableContours:
             contourcolor, meanHSVh = retrieve_area_color(rgbraw,contour,colors)
 
