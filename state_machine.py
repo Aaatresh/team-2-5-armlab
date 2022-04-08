@@ -110,6 +110,9 @@ class StateMachine():
         if self.next_state == "recital":
             self.recital()
 
+        if self.next_state == "IDblocks":
+            self.IDblocks()
+
     """Functions run for each state"""
 
     def manual(self):
@@ -305,6 +308,17 @@ class StateMachine():
         self.waypoints = fetchedCSV[1:,0:5]
         self.waypointGrips = fetchedCSV[1:,5]
         self.next_state="idle"
+
+    def IDblocks(self):
+        self.current_state = "IDblocks"
+        self.status_message = "Detecting and printing blocks found"
+        
+        # print("Blocks Located:",self.camera.block_detections)
+        print("Detected Colors:", self.camera.block_colors)
+        # print("Detected Colors Hval:", self.camera.block_colors_H)
+
+        self.next_state="idle"
+    
 class StateMachineThread(QThread):
     """!
     @brief      Runs the state machine

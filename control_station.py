@@ -123,6 +123,12 @@ class Gui(QMainWindow):
         #CN: When ready to replay a string of poses
         self.ui.btnUser10.setText('Recital')
         self.ui.btnUser10.clicked.connect(partial(nxt_if_arm_init, 'recital'))
+
+
+        #CN: Print out blocks detected
+        self.ui.btnUser12.setText('ID Blocks')
+        self.ui.btnUser12.clicked.connect(partial(nxt_if_arm_init, 'IDblocks'))
+
         # Sliders
         for sldr in self.joint_sliders:
             sldr.valueChanged.connect(self.sliderChange)
