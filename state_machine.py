@@ -313,8 +313,13 @@ class StateMachine():
         self.current_state = "IDblocks"
         self.status_message = "Detecting and printing blocks found"
         
+        index = 0
         # print("Blocks Located:",self.camera.block_detections)
-        print("Detected Colors:", self.camera.block_colors)
+        for block in self.camera.block_detections:
+            print("Detected ", self.camera.block_colors[index]," block at coord: ", self.camera.block_detections[index])
+
+            index = index+1
+        # print("Detected Colors:", self.camera.block_colors)
         # print("Detected Colors Hval:", self.camera.block_colors_H)
 
         self.next_state="idle"
