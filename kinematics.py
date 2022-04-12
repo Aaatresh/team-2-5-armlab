@@ -170,8 +170,6 @@ def IK_pox(pose):
                 TODO: Convert a desired end-effector pose as np.array (x,y,z,psi,theta,phi) to joint angles
 
     @param      pose        The desired pose as np.array (x,y,z,psi,theta,phi)
-    # @param      m_mat       The M matrix
-    # @param      s_lst       List of screw vectors
 
     @return     All four possible joint configurations in a numpy array 4x4 where each row is one possible joint
                 configuration
@@ -186,14 +184,8 @@ def IK_pox(pose):
     m_mat = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 424.15], [0.0, 0.0, 1.0, 303.91], [0.0, 0.0, 0.0, 1]])
 
     gd = pose_to_T(pose)
-    # print('gd =')
-    # print(gd)
     gi = np.linalg.inv(m_mat)
-    # print('gi =')
-    # print(gi)
     g1 = np.matmul(gd, gi)
-    # print('g1 =')
-    # print(g1)
 
     x0 = m_mat[0][3]
     y0 = m_mat[1][3]
@@ -201,35 +193,22 @@ def IK_pox(pose):
 
     # Th1 can be solved with geometry
     th1 = np.arctan2(pose[1],pose[0]) - np.arctan2(y0,x0)
-    # print('th1 = ',th1)
 
     # e2.e3.e4.e5 = e-1.gd.gst-1 = g2
     # e2.e3.p4 = g2.p4
     # e2.e3.p4 - p2 = g2.p4 - p2
     # e2.||e3.p4 - p2|| = ||g2.p4 - p2||
     e1 = to_s_matrix(s_lst[0][3:6], s_lst[0][0:3], th1)
-    # print('e1 =')
-    # print(e1)
     e1i = np.linalg.inv(e1)
-    # print('e1i =')
-    # print(e1i)
     g2 = np.matmul(e1i, g1)
-    # print('g2 = ')
-    # print(g2)
 
     p4 = np.array([0.0, 250.0, 303.91, 1.0])
     p4 = np.atleast_2d(p4).T
-    # print('p4 = ')
-    # print(p4)
 
     g2p4 = np.matmul(g2,p4)
-    # print('g2p4 = ')
-    # print(g2p4)
 
     p2 = np.array([0.0, 0.0, 103.91, 1.0])
     p2 = np.atleast_2d(p2).T
-    # print('p2 = ')
-    # print(p2)
 
     w = s_lst[2][3:6]
     r = np.array([0, 50, 303.91])
@@ -244,18 +223,11 @@ def IK_pox(pose):
         th3 = th3[0]
     else:
         th3 = th3[1]
-    # print(th3)
 
     e3 = to_s_matrix(s_lst[2][3:6], s_lst[2][0:3], th3)
-    # print('e3 = ')
-    # print(e3)
     e3i = np.linalg.inv(e3)
-    # print('e3i =')
-    # print(e3i)
 
     e3p4 = np.matmul(e3, p4)
-    # print('e3p4 = ')
-    # print(e3p4)
 
     # e2.(e3.p4) = g2.p4
     # Th2 can be solved with PK Subproblem 1
@@ -264,29 +236,18 @@ def IK_pox(pose):
     p = e3p4[0:3].T[0]
     q = g2p4[0:3].T[0]
     th2 = PK1(w,r,p,q)
-    # print(th2)
 
     e2 = to_s_matrix(s_lst[1][3:6], s_lst[1][0:3], th3)
-    # print('e2 = ')
-    # print(e2)
     e2i = np.linalg.inv(e2)
-    # print('e2i =')
-    # print(e2i)
     
     # e4.e5 = e-3.e-2.e-1.gd.gst-1 = g3
     # e4.e5.p1 = g3.p1
     g3 = np.matmul(e3i, np.matmul(e2i, g2))
-    # print('g3 = ')
-    # print(g3)
 
     p1 = np.array([0.0, 0.0, 0.0, 1.0])
     p1 = np.atleast_2d(p1).T
-    # print('p1 = ')
-    # print(p1)
 
     g3p1 = np.matmul(g3, p1)
-    # print('g3p1 = ')
-    # print(g3p1)
 
     # Theta 4 and 5 can be solved with PK subproblem 2
     w1 = s_lst[3][3:6]
@@ -301,9 +262,6 @@ def IK_pox(pose):
     else:
         th4 = th45[1][0]
         th5 = th45[1][1]
-    # print(th45)
-    # print(th4)
-    # print(th5)
 
     th_mat = np.array([th1, th2, th3, th4, th5])
 

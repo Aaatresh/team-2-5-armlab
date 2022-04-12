@@ -116,6 +116,9 @@ class StateMachine():
         if self.next_state == "grabclick":
             self.click2GrabNPlace()
 
+        if self.next_state == "tunePID":
+            self.tunePID()
+
     """Functions run for each state"""
 
     def manual(self):
@@ -466,6 +469,28 @@ class StateMachine():
         # plan path to point, open gripper and plan a path back to its starting position
         self.plan_and_execute(start_joint_state, final_joint_state, xyz_w,
                                                final_gripper_state="open")
+
+        self.next_state="idle"
+
+    def tunePID(self):
+        print("Current PID Params:")
+        for name in self.rxarm.joint_names:
+            print("{0} gains: {1}".format(name, self.rxarm.get_motor_pid_params(name)))
+
+        print("Enter name of joint to tune")
+        name = input()
+        print("Enter P, I, and D values for selected joint")
+        print("P parametr")
+        p_param = input()
+        print("I parameter")
+        i_param = input()
+        print("D parameter")
+        d_param = input()
+
+        values = [p_param, i_param, d_param]
+
+        self.rxarm.set_motor_pid_params(name, values)
+        self.next_state="idle"
 
 
 class StateMachineThread(QThread):

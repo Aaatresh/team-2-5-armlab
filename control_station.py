@@ -128,6 +128,10 @@ class Gui(QMainWindow):
         self.ui.btnUser11.setText('Grab Click')
         self.ui.btnUser11.clicked.connect(partial(nxt_if_arm_init, 'grabclick'))
 
+        #PID tuning
+        self.ui.btnUser12.setText('PID Tune')
+        self.ui.btnUser12.clicked.connect(partial(nxt_if_arm_init, 'tunePID'))
+
         # Sliders
         for sldr in self.joint_sliders:
             sldr.valueChanged.connect(self.sliderChange)
