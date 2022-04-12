@@ -177,15 +177,18 @@ def IK_pox(pose):
 
     xi1 = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 1.0])
     xi2 = np.array([0.0, -103.91, 0.0, -1.0, 0.0, 0.0])
-    xi3 = np.array([0.0, -303.91, 50.0, -1.0, 0.0, 0.0])
-    xi4 = np.array([0.0, -303.91, 250.0, -1.0, 0.0, 0.0])
+    xi3 = np.array([0.0, 303.91, -50.0, 1.0, 0.0, 0.0])
+    xi4 = np.array([0.0, 303.91, -250.0, 1.0, 0.0, 0.0])
     xi5 = np.array([-303.91, 0.0, 0.0, 0.0, 1.0, 0.0])
     s_lst = np.array([xi1, xi2, xi3, xi4, xi5])
     m_mat = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 424.15], [0.0, 0.0, 1.0, 303.91], [0.0, 0.0, 0.0, 1]])
 
     gd = pose_to_T(pose)
+    print(gd)
     gi = np.linalg.inv(m_mat)
+    print(gi)
     g1 = np.matmul(gd, gi)
+    print(g1)
 
     x0 = m_mat[0][3]
     y0 = m_mat[1][3]
@@ -193,6 +196,7 @@ def IK_pox(pose):
 
     # Th1 can be solved with geometry
     th1 = np.arctan2(pose[1],pose[0]) - np.arctan2(y0,x0)
+    th1 = clamp(th1)
 
     # e2.e3.e4.e5 = e-1.gd.gst-1 = g2
     # e2.e3.p4 = g2.p4
@@ -219,10 +223,11 @@ def IK_pox(pose):
     # e2.||e3.p4 - p2|| = ||g2.p4 - p2||
     # Th3 can be sovled with PK subproblem 3 
     th3 = PK3(w,r,p,q,d)
-    if(th3[0] < th3[1]):
-        th3 = th3[0]
+    print(th3)
+    if(np.abs(th3[0]) < np.abs(th3[1])):
+        th3 = clamp(th3[0])
     else:
-        th3 = th3[1]
+        th3 = clamp(th3[1])
 
     e3 = to_s_matrix(s_lst[2][3:6], s_lst[2][0:3], th3)
     e3i = np.linalg.inv(e3)
@@ -241,27 +246,60 @@ def IK_pox(pose):
     e2i = np.linalg.inv(e2)
     
     # e4.e5 = e-3.e-2.e-1.gd.gst-1 = g3
-    # e4.e5.p1 = g3.p1
+    # e4.p5 = g3.p5
     g3 = np.matmul(e3i, np.matmul(e2i, g2))
+
+    # p1 = np.array([0.0, 0.0, 0.0, 1.0])
+    # p1 = np.atleast_2d(p1).T
+
+    # g3p1 = np.matmul(g3, p1)
+
+    p5 = np.array([0.0, 0.0, 303.91, 1.0])
+    p5 = np.atleast_2d(p5).T
+
+    g3p5 = np.matmul(g3, p5)
+
+    # Theta 4 can be solved with PK subproblem 1
+    # w1 = s_lst[3][3:6]
+    # w2 = s_lst[4][3:6]
+    # r = p4[0:3].T[0]
+    # p = p1[0:3].T[0]
+    # q = g3p1[0:3].T[0]
+    # print(w1, w2, r, p, q)
+    # th45 = PK2(w1, w2, r, p, q)
+    # print("th45 = ", th45)
+
+    w = s_lst[3][3:6]
+    r = p4[0:3].T[0]
+    p = p5[0:3].T[0]
+    q = g3p5[0:3].T[0]
+    th4 = PK1(w,r,p,q)
+
+    e4 = to_s_matrix(s_lst[3][3:6], s_lst[3][0:3], th4)
+    e4i = np.linalg.inv(e4)
+
+    # e5 = e-4.g3 = g4
+    # e5.p1 = g4.p1
+    g4 = np.matmul(e4i, g3)
 
     p1 = np.array([0.0, 0.0, 0.0, 1.0])
     p1 = np.atleast_2d(p1).T
 
-    g3p1 = np.matmul(g3, p1)
+    g4p1 = np.matmul(g4, p1)
 
-    # Theta 4 and 5 can be solved with PK subproblem 2
-    w1 = s_lst[3][3:6]
-    w2 = s_lst[4][3:6]
-    r = p4[0:3].T[0]
+    # Theta 5 can be solved with PK subproblem 1
+    w = s_lst[4][3:6]
+    r = p5[0:3].T[0]
     p = p1[0:3].T[0]
-    q = g3p1[0:3].T[0]
-    th45 = PK2(w1, w2, r, p, q)
-    if(abs(th45[0][0]) < 1.6 and abs(th45[0][1]) < 1.6):
-        th4 = th45[0][0]
-        th5 = th45[0][1]
-    else:
-        th4 = th45[1][0]
-        th5 = th45[1][1]
+    q = g4p1[0:3].T[0]
+    th5 = PK1(w,r,p,q)
+
+    # if((abs(th45[0][0]) < 2.0 and abs(th45[0][1]) < 2.0)):
+    #     th4 = th45[0][0]
+    #     th5 = th45[0][1]
+    # else:
+    #     th4 = th45[1][0]
+    #     th5 = th45[1][1]
 
     th_mat = np.array([th1, th2, th3, th4, th5])
 
@@ -321,6 +359,7 @@ def PK2(w1, w2, r, p, q):
     u = np.atleast_2d(u).T
     v = q - r
     v = np.atleast_2d(v).T
+    print("U:",u,"V:",v)
 
     w1_hor = np.atleast_2d(w1)
     w1_ver = w1_hor.T
@@ -328,15 +367,16 @@ def PK2(w1, w2, r, p, q):
     w2_ver = w2_hor.T
 
     w1Tw2 = np.matmul(w1_hor, w2_ver)
-
+    print("dot",w1Tw2)
     alpha = (np.matmul(w1Tw2 , np.matmul(w2, u)) - np.matmul(w1_hor,v)) / (w1Tw2**2 - 1)
     alpha = alpha[0][0]
 
     beta = (np.matmul(w1Tw2 , np.matmul(w1, v)) - np.matmul(w2_hor,u)) / (w1Tw2**2 - 1)
     beta = beta[0][0]
-
     gamma_sq = np.linalg.norm(u)**2 - alpha**2 - beta**2 - 2*alpha*beta*np.matmul(w1_hor,w2_ver)[0][0]
     gamma_sq = gamma_sq / (np.linalg.norm(np.cross(w1,w2))**2)
+    if(gamma_sq < 0):
+        gamma_sq = 0
 
     gamma1 = np.sqrt(gamma_sq)
     gamma2 = -np.sqrt(gamma_sq)
