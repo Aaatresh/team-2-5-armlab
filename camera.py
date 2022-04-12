@@ -292,6 +292,14 @@ class Camera():
         lower = 900
         upper = 965
 
+        #depth "slice" we consider to mean a stack is two blocks tall
+        lower2 = 0
+        upper2 = 0
+
+        #depth "slice" we consider to mean a stack is two blocks tall
+        lower3 = 0
+        upper3 = 0
+
         depth_data = self.DepthFrameRaw.copy()      
 
 
