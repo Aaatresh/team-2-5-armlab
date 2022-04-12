@@ -51,9 +51,6 @@ if __name__ == '__main__':
     th_d = IK_pox(pos)
     print('th_d = ')
     print(th_d)
-   
-    print("FK:")
-    print(get_pose_from_T(FK_pox(th_d, gst0, screws)))
 
     # print('Test FK')
     # fk_poses = []

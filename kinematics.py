@@ -184,11 +184,8 @@ def IK_pox(pose):
     m_mat = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 424.15], [0.0, 0.0, 1.0, 303.91], [0.0, 0.0, 0.0, 1]])
 
     gd = pose_to_T(pose)
-    print(gd)
     gi = np.linalg.inv(m_mat)
-    print(gi)
     g1 = np.matmul(gd, gi)
-    print(g1)
 
     x0 = m_mat[0][3]
     y0 = m_mat[1][3]
@@ -205,7 +202,7 @@ def IK_pox(pose):
     e1 = to_s_matrix(s_lst[0][3:6], s_lst[0][0:3], th1)
     e1i = np.linalg.inv(e1)
     g2 = np.matmul(e1i, g1)
-
+    
     p4 = np.array([0.0, 250.0, 303.91, 1.0])
     p4 = np.atleast_2d(p4).T
 
@@ -223,13 +220,14 @@ def IK_pox(pose):
     # e2.||e3.p4 - p2|| = ||g2.p4 - p2||
     # Th3 can be sovled with PK subproblem 3 
     th3 = PK3(w,r,p,q,d)
-    print(th3)
+    
     if(np.abs(th3[0]) < np.abs(th3[1])):
         th3 = clamp(th3[0])
     else:
         th3 = clamp(th3[1])
 
     e3 = to_s_matrix(s_lst[2][3:6], s_lst[2][0:3], th3)
+    
     e3i = np.linalg.inv(e3)
 
     e3p4 = np.matmul(e3, p4)
@@ -241,14 +239,14 @@ def IK_pox(pose):
     p = e3p4[0:3].T[0]
     q = g2p4[0:3].T[0]
     th2 = PK1(w,r,p,q)
-
-    e2 = to_s_matrix(s_lst[1][3:6], s_lst[1][0:3], th3)
+    
+    e2 = to_s_matrix(s_lst[1][3:6], s_lst[1][0:3], th2)
     e2i = np.linalg.inv(e2)
     
     # e4.e5 = e-3.e-2.e-1.gd.gst-1 = g3
     # e4.p5 = g3.p5
     g3 = np.matmul(e3i, np.matmul(e2i, g2))
-
+    
     # p1 = np.array([0.0, 0.0, 0.0, 1.0])
     # p1 = np.atleast_2d(p1).T
 
