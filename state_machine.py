@@ -121,6 +121,15 @@ class StateMachine():
 
         if self.next_state == "tunePID":
             self.tunePID()
+#COMPETITION STATES
+        if self.next_state == "comp1":
+            self.comp1()
+        if self.next_state == "comp2":
+            self.comp2()
+        if self.next_state == "comp3":
+            self.comp3()
+        if self.next_state == "comp3":
+            self.comp4()
 
     """Functions run for each state"""
 
@@ -357,7 +366,7 @@ class StateMachine():
         index = 0
         # print("Blocks Located:",self.camera.block_detections)
         for block in self.camera.block_colors:
-            print(self.camera.block_colors[index]," block located at coord: ", self.camera.block_detections[index])
+            print(self.camera.block_colors[index]," block of size ",  self.camera.block_sizes[index], "located at coord: ", self.camera.block_detections[index])
             index = index+1
         index = 0
         print("---------end of list--------")
@@ -430,6 +439,22 @@ class StateMachine():
         z = self.camera.DepthFrameRaw[pixel_point[1, 0]][pixel_point[0, 0]]
         print("pixel_point: ", pixel_point)
         print("z = ", z)
+        self.current_state = "IDblocks"
+        self.status_message = "Detecting and printing blocks found"
+        print("-------Detected block list -----------")
+        
+        index = 0
+        # print("Blocks Located:",self.camera.block_detections)
+        for block in self.camera.block_colors:
+            print(self.camera.block_colors[index]," block located at coord: ", self.camera.block_detections[index])
+            index = index+1
+        index = 0
+        print("---------end of list--------")
+
+        # print("Detected Colors:", self.camera.block_colors)
+        # print("Detected Colors Hval:", self.camera.block_colors_H)
+
+        self.next_state="idle"
         xyz_c = z * np.matmul(Pinv, pixel_point)
         xyz_w = np.matmul(invExtMtx, np.array([[xyz_c[0, 0]], [xyz_c[1, 0]], [xyz_c[2,0]], [1]]))
         xyz_w[2,0] = 976 - z + 10
@@ -514,6 +539,77 @@ class StateMachine():
         self.rxarm.set_motor_pid_params(name, values)
         self.next_state="idle"
 
+    def comp1(self):
+        self.current_state = "comp1"
+        self.status_message = "Executing Competition Task 1"
+        
+        #Look at every block contour
+
+        #If the contour area is greater than X, it is a large block
+        #If that large block is not in the "goal" region (check centroid coords) for large blocks, move it there
+
+         
+        #If the contour area is less than X, it is a small block
+        #If that small block is not in the "goal" region (check centroid coords) for small blocks, move it there 
+
+        #Run the function again
+        #If any blocks are detected outside proper goal regions, move them (re-execute fcn)
+        #Else print DONE, go "idle"
+
+        sortedthiscycle = 0
+        largeGoalX = 200
+        largeGoalY = -100
+
+        smallGoalX = -largeGoalX
+        smallGoalY = largeGoalY
+
+        for e, block in enumerate(self.camera.block_contours):
+            #for this block, decide if it is large or small
+            blocksizethresh = 200
+            blockX, blockY, blockZ = self.camera.block_detections[e]
+            
+            if cv2.contourArea(block) > blocksizethresh and blockY >= 0: #if the contour is a large block
+                #grab block, drop at large goal
+
+                moveBlock(blockX,blockY,blockZ,'grab')
+                moveBlock(largeGoalX,largeGoalY,20,'drop')
+                #indicate that block was sorted
+                sortedthiscycle+=1
+
+
+            if cv2.contourArea(block) < blocksizethresh and blockY >= 0: #if the contour is a small block
+                #grab block, drop at small goal
+
+                moveBlock(blockX,blockY,blockZ,'grab')
+                moveBlock(smallGoalX,smallGoalY,20,'drop')
+
+                #indicate that block was sorted
+                sortedthiscycle+=1
+                
+        if sortedthiscycle != 0:
+            self.next_state="comp1"
+
+        if sortedthiscycle ==0:
+            self.next_state="idle"
+
+    def comp2(self):
+        self.current_state = "comp2"
+        self.status_message = "Executing Competition Task 2"
+        
+        
+        self.next_state="idle"
+    def comp3(self):
+        self.current_state = "comp3"
+        self.status_message = "Executing Competition Task 3"
+        
+        
+        self.next_state="idle"
+    def comp4(self):
+        self.current_state = "comp4"
+        self.status_message = "Executing Competition Task 4"
+        
+        
+        self.next_state="idle"
 
 class StateMachineThread(QThread):
     """!

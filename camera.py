@@ -49,6 +49,7 @@ class Camera():
         self.block_detectionsCAMCOORD = np.array([])
         self.block_colors = []
         self.block_colors_H = []
+        self.block_sizes = []
 
     def processVideoFrame(self):
         """!
@@ -359,7 +360,7 @@ class Camera():
         # print("start area check")
 
         for contour in contoursOG:
-            if cv2.contourArea(contour) > 350: #check contour area, filter out anything too small
+            if cv2.contourArea(contour) > 200: #check contour area, filter out anything too small
 
                 #make a rotated bounding rectangle (7b at https://docs.opencv.org/4.x/dd/d49/tutorial_py_contour_features.html)
                 rect = cv2.minAreaRect(contour)
@@ -383,7 +384,7 @@ class Camera():
             annotateColor = annotate[contourcolor]
             self.block_colors.append(contourcolor)
             self.block_colors_H.append(meanHSVh)
-
+            self.block_sizes.append(cv2.contourArea(contour))
             x = 30
             annotateColor = [annotateColor[0]+x,annotateColor[1]+x,annotateColor[2]+x]
             # cv2.drawContours(rgb_image, contour, -1, annotateColor, 3)
@@ -407,6 +408,7 @@ class Camera():
         self.block_detections = np.array(centroids)
         self.block_detectionsCAMCOORD = np.array(centroidsCAMCOORD)
         self.block_contours = np.array(viableContours)
+
 
     def detectBlocksInDepthImage(self):
         """!

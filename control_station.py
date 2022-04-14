@@ -136,6 +136,19 @@ class Gui(QMainWindow):
         self.ui.btnUser12.setText('PID Tune')
         self.ui.btnUser12.clicked.connect(partial(nxt_if_arm_init, 'tunePID'))
 
+        #competition tasks
+        self.ui.btnUser14.setText('Comp 1')
+        self.ui.btnUser14.clicked.connect(partial(nxt_if_arm_init, 'comp1'))
+
+        self.ui.btnUser15.setText('Comp 2')
+        self.ui.btnUser15.clicked.connect(partial(nxt_if_arm_init, 'comp2'))
+        
+        self.ui.btnUser16.setText('Comp 3')
+        self.ui.btnUser16.clicked.connect(partial(nxt_if_arm_init, 'comp3'))
+
+        self.ui.btnUser17.setText('Comp 4')
+        self.ui.btnUser17.clicked.connect(partial(nxt_if_arm_init, 'comp4'))
+
         # Sliders
         for sldr in self.joint_sliders:
             sldr.valueChanged.connect(self.sliderChange)
