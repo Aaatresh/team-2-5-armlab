@@ -411,7 +411,7 @@ class StateMachine():
         print("z = ", z)
         xyz_c = z * np.matmul(Pinv, pixel_point)
         xyz_w = np.matmul(invExtMtx, np.array([[xyz_c[0, 0]], [xyz_c[1, 0]], [xyz_c[2,0]], [1]]))
-        xyz_w[2,0] = 976 - z + 20
+        xyz_w[2,0] = 976 - z + 10
 
         position = np.reshape(xyz_w[:3], (3,))
 
@@ -451,7 +451,7 @@ class StateMachine():
 
         xyz_c = z * np.matmul(Pinv, pixel_point)
         xyz_w = np.matmul(invExtMtx, np.array([[xyz_c[0, 0]], [xyz_c[1, 0]], [xyz_c[2, 0]], [1]]))
-        xyz_w[2,0] = 976 - z + 20
+        xyz_w[2,0] = 976 - z + 40
 
         position = np.reshape(xyz_w[:3], (3, ))
 
