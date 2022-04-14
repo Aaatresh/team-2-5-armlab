@@ -116,6 +116,9 @@ class StateMachine():
         if self.next_state == "grabclick":
             self.click2GrabNPlace()
 
+        if self.next_state == "tunePID":
+            self.tunePID()
+
     """Functions run for each state"""
 
     def manual(self):
@@ -348,8 +351,8 @@ class StateMachine():
 
         final_joint_position_1 = IK_pox(np.array([xyz_w[0], xyz_w[1], xyz_w[2] + 50.0,
                                                               -np.pi/2.0, 0.0, 0.0], dtype=np.float32))
-        final_joint_position_1[2] = final_joint_position_1[2]*-1
-        final_joint_position_1[3] = final_joint_position_1[3]*-1
+        # final_joint_position_1[2] = final_joint_position_1[2]*-1
+        # final_joint_position_1[3] = final_joint_position_1[3]*-1
         final_joint_position_2 = IK_pox(np.array([xyz_w[0], xyz_w[1], xyz_w[2] + 70.0,
                                                               -np.pi/2.0, 0.0, 0.0], dtype=np.float32))
         final_joint_position_3 = IK_pox(np.array([xyz_w[0], xyz_w[1], xyz_w[2] + 100.0,
@@ -358,7 +361,7 @@ class StateMachine():
         # Go from start to final joint state
         self.waypoints = [final_joint_position_1, final_joint_position]
         print("waypoints: ", self.waypoints)
-        hold = input()
+        # hold = input()
         self.execute_click2grab()
 
         print("first execute!")
@@ -408,7 +411,7 @@ class StateMachine():
         print("z = ", z)
         xyz_c = z * np.matmul(Pinv, pixel_point)
         xyz_w = np.matmul(invExtMtx, np.array([[xyz_c[0, 0]], [xyz_c[1, 0]], [xyz_c[2,0]], [1]]))
-        xyz_w[2,0] = 976 - z
+        xyz_w[2,0] = 976 - z + 10
 
         position = np.reshape(xyz_w[:3], (3,))
 
@@ -418,8 +421,8 @@ class StateMachine():
         print("pose: ", pose)
 
         final_joint_state = IK_pox(pose)
-        final_joint_state[2] = final_joint_state[2]*-1
-        final_joint_state[3] = final_joint_state[3]*-1
+        # final_joint_state[2] = final_joint_state[2]*-1
+        # final_joint_state[3] = final_joint_state[3]*-1
 
         print("final joint state: ", final_joint_state)
 
@@ -448,6 +451,7 @@ class StateMachine():
 
         xyz_c = z * np.matmul(Pinv, pixel_point)
         xyz_w = np.matmul(invExtMtx, np.array([[xyz_c[0, 0]], [xyz_c[1, 0]], [xyz_c[2, 0]], [1]]))
+        xyz_w[2,0] = 976 - z + 40
 
         position = np.reshape(xyz_w[:3], (3, ))
 
@@ -458,14 +462,36 @@ class StateMachine():
         print("pose shape: ", pose.shape)
 
         final_joint_state = IK_pox(pose)
-        final_joint_state[2] = final_joint_state[2]*-1
-        final_joint_state[3] = final_joint_state[3]*-1
+        # final_joint_state[2] = final_joint_state[2]*-1
+        # final_joint_state[3] = final_joint_state[3]*-1
 
-        start_joint_state = self.rxarm.get_joint_positions()
+        start_joint_state = self.rxarm.get_positions()
 
         # plan path to point, open gripper and plan a path back to its starting position
         self.plan_and_execute(start_joint_state, final_joint_state, xyz_w,
                                                final_gripper_state="open")
+
+        self.next_state="idle"
+
+    def tunePID(self):
+        print("Current PID Params:")
+        for name in self.rxarm.joint_names:
+            print("{0} gains: {1}".format(name, self.rxarm.get_motor_pid_params(name)))
+
+        print("Enter name of joint to tune")
+        name = input()
+        print("Enter P, I, and D values for selected joint")
+        print("P parametr")
+        p_param = input()
+        print("I parameter")
+        i_param = input()
+        print("D parameter")
+        d_param = input()
+
+        values = [p_param, i_param, d_param]
+
+        self.rxarm.set_motor_pid_params(name, values)
+        self.next_state="idle"
 
 
 class StateMachineThread(QThread):

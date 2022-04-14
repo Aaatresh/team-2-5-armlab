@@ -25,13 +25,13 @@ if __name__ == '__main__':
     #dh_params = parse_dh_param_file(args['dhconfig'])
     xi1 = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 1.0])
     xi2 = np.array([0.0, -103.91, 0.0, -1.0, 0.0 , 0.0])
-    xi3 = np.array([0.0, -303.91, 50.0, -1.0, 0.0, 0.0])
-    xi4 = np.array([0.0, -303.91, 250.0, -1.0, 0.0, 0.0])
+    xi3 = np.array([0.0, 303.91, -50.0, 1.0, 0.0, 0.0])
+    xi4 = np.array([0.0, 303.91, -250.0, 1.0, 0.0, 0.0])
     xi5 = np.array([-303.91, 0.0, 0.0, 0.0, 1.0, 0.0])
     screws = np.array([xi1, xi2, xi3, xi4, xi5])
     gst0 = np.array([[1.0, 0.0, 0.0, 0.0],[0.0, 1.0, 0.0, 424.15],[0.0, 0.0, 1.0, 303.91],[0.0, 0.0, 0.0, 1]])
     ### Add arm configurations to test here
-    fk_angles = [[-0.3850291967391968, -0.03834952041506767, 0.2960582971572876, 1.1136701107025146, -0.40650492906570435]]
+    fk_angles = [[-1.43, -0.13, -0.39, -1.31, -1.4]]
 
     print('Test FK')
     fk_poses = []
@@ -47,11 +47,10 @@ if __name__ == '__main__':
     # print(th_d)
 
     print('Test IK 2')
-    pos = np.array([0, 175, 50, -np.pi/2, 0, 0])
-    th_d = IK_pox(pos,gst0,screws)
+    pos = np.array([215, 30, 83, -np.pi/2, 0, 0])
+    th_d = IK_pox(pos)
     print('th_d = ')
     print(th_d)
-   
 
     # print('Test FK')
     # fk_poses = []
