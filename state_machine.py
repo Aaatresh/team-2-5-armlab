@@ -113,6 +113,9 @@ class StateMachine():
         if self.next_state == "recital":
             self.recital()
 
+        if self.next_state == "IDblocks":
+            self.IDblocks()
+
         if self.next_state == "grabclick":
             self.click2GrabNPlace()
 
@@ -346,6 +349,24 @@ class StateMachine():
         self.waypointGrips = fetchedCSV[1:,5]
         self.next_state="idle"
 
+    def IDblocks(self):
+        self.current_state = "IDblocks"
+        self.status_message = "Detecting and printing blocks found"
+        print("-------Detected block list -----------")
+        
+        index = 0
+        # print("Blocks Located:",self.camera.block_detections)
+        for block in self.camera.block_colors:
+            print(self.camera.block_colors[index]," block located at coord: ", self.camera.block_detections[index])
+            index = index+1
+        index = 0
+        print("---------end of list--------")
+
+        # print("Detected Colors:", self.camera.block_colors)
+        # print("Detected Colors Hval:", self.camera.block_colors_H)
+
+        self.next_state="idle"
+    
     def plan_and_execute(self, start_joint_position, final_joint_position, xyz_w, final_gripper_state="open"):
 
 

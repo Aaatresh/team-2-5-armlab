@@ -124,6 +124,10 @@ class Gui(QMainWindow):
         self.ui.btnUser10.setText('Recital')
         self.ui.btnUser10.clicked.connect(partial(nxt_if_arm_init, 'recital'))
 
+
+        #CN: Print out blocks detected
+        self.ui.btnUser13.setText('ID Blocks')
+        self.ui.btnUser13.clicked.connect(partial(nxt_if_arm_init, 'IDblocks'))
         #click to grab
         self.ui.btnUser11.setText('Grab Click')
         self.ui.btnUser11.clicked.connect(partial(nxt_if_arm_init, 'grabclick'))
@@ -180,8 +184,8 @@ class Gui(QMainWindow):
         #self.ui.rdoutTheta.setText(str("%+.2f" % (pos[4])))
         #self.ui.rdoutPsi.setText(str("%+.2f" % (pos[5])))
 
-    @pyqtSlot(QImage, QImage, QImage)
-    def setImage(self, rgb_image, depth_image, tag_image):
+    @pyqtSlot(QImage, QImage, QImage, QImage)
+    def setImage(self, rgb_image, depth_image, tag_image, blockdetect_image):
         """!
         @brief      Display the images from the camera.
 
@@ -194,6 +198,8 @@ class Gui(QMainWindow):
             self.ui.videoDisplay.setPixmap(QPixmap.fromImage(depth_image))
         if (self.ui.radioUsr1.isChecked()):
             self.ui.videoDisplay.setPixmap(QPixmap.fromImage(tag_image))
+        if (self.ui.radioUsr2.isChecked()):
+            self.ui.videoDisplay.setPixmap(QPixmap.fromImage(blockdetect_image))    
 
     """ Other callback functions attached to GUI elements"""
 
@@ -338,6 +344,7 @@ class Gui(QMainWindow):
         self.ui.chk_directcontrol.setChecked(False)
         self.rxarm.enable_torque()
         self.sm.set_next_state('initialize_rxarm')
+
 
 
 ### TODO: Add ability to parse POX config file as well

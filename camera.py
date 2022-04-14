@@ -47,6 +47,8 @@ class Camera():
         self.block_contours = np.array([])
         self.block_detections = np.array([])
         self.block_detectionsCAMCOORD = np.array([])
+        self.block_colors = []
+        self.block_colors_H = []
 
     def processVideoFrame(self):
         """!
@@ -253,13 +255,23 @@ class Camera():
 
         font = cv2.FONT_HERSHEY_SIMPLEX
         colors = list((
-            {'id': 'redHI', 'color': (165, 179)},
-            {'id': 'redLO', 'color': (0, 6)},
-            {'id': 'orange', 'color': (7, 15)},
-            {'id': 'yellow', 'color': (17, 38)},
-            {'id': 'green', 'color': (55, 94)},
-            {'id': 'blue', 'color': (84, 112)},
-            {'id': 'purple', 'color': (123, 164)})
+            # {'id': 'redHI', 'color': (165, 179)},
+            # {'id': 'redLO', 'color': (0, 6)},
+            # {'id': 'orange', 'color': (7, 15)},
+            # {'id': 'yellow', 'color': (17, 38)},
+            # {'id': 'green', 'color': (55, 94)},
+            # {'id': 'blue', 'color': (84, 112)},
+            # {'id': 'purple', 'color': (123, 164)}
+
+            {'id': 'redHI', 'color': (120, 150)},
+            # {'id': 'redLO', 'color': (0, 6)},
+            {'id': 'orange', 'color': (105, 115)}, #109-110 nom
+            {'id': 'yellow', 'color': (80,100)}, #95 nom
+            {'id': 'green', 'color': (40, 55)}, #45-51 nom
+            {'id': 'blue', 'color': (10, 20)}, #15 nom
+            {'id': 'purple', 'color': (160, 179)}, #170 nom
+            {'id': 'purple', 'color': (0, 5)} #0 nom             
+            )
         )
         img = 'armlab_opencv_examples-master/image_all_blocks.png'
         imgD = 'armlab_opencv_examples-master/depth_all_blocks.png'
@@ -279,6 +291,14 @@ class Camera():
 
         lower = 900
         upper = 965
+
+        #depth "slice" we consider to mean a stack is two blocks tall
+        lower2 = 0
+        upper2 = 0
+
+        #depth "slice" we consider to mean a stack is two blocks tall
+        lower3 = 0
+        upper3 = 0
 
         depth_data = self.DepthFrameRaw.copy()      
 
@@ -336,17 +356,34 @@ class Camera():
         purpleOnly = cv2.bitwise_and(imgMasked_rgb,imgMasked_rgb,mask=purpleMask)
         _, contours, _ = cv2.findContours(purpleMask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         viableContours = []
+        # print("start area check")
+
         for contour in contoursOG:
-            if cv2.contourArea(contour) > 200:
-                viableContours.append(contour)
+            if cv2.contourArea(contour) > 350: #check contour area, filter out anything too small
+
+                #make a rotated bounding rectangle (7b at https://docs.opencv.org/4.x/dd/d49/tutorial_py_contour_features.html)
+                rect = cv2.minAreaRect(contour)
+                box = cv2.boxPoints(rect)
+                box = np.int0(box)
+                if .75 < rect[1][1]/rect[1][0] < 1.25: #check squareness. if square enough, consider a block
+                    cv2.drawContours(rgb_image,[box],0,(0,0,255),2)
+
+                    # print(cv2.contourArea(contour))
+                    # print(rect[1][1]/rect[1][0])
+                    viableContours.append(contour)
 
 
         centroids = []
         centroidsCAMCOORD = []
+        del self.block_colors[:]
+        del self.block_colors_H[:]
         for contour in viableContours:
-            contourcolor, meanHSV = retrieve_area_color(rgbraw,contour,colors)
+            contourcolor, meanHSVh = retrieve_area_color(rgbraw,contour,colors)
 
             annotateColor = annotate[contourcolor]
+            self.block_colors.append(contourcolor)
+            self.block_colors_H.append(meanHSVh)
+
             x = 30
             annotateColor = [annotateColor[0]+x,annotateColor[1]+x,annotateColor[2]+x]
             # cv2.drawContours(rgb_image, contour, -1, annotateColor, 3)
@@ -366,7 +403,7 @@ class Camera():
           
             centroidsCAMCOORD.append([cX,cY])
 
-        cv2.drawContours(rgb_image, viableContours, -1, (0,255,255), 3)
+        # cv2.drawContours(rgb_image, viableContours, -1, (0,255,255), 3)
         self.block_detections = np.array(centroids)
         self.block_detectionsCAMCOORD = np.array(centroidsCAMCOORD)
         self.block_contours = np.array(viableContours)
