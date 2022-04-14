@@ -12,6 +12,7 @@ os.sys.path.append(os.path.realpath(script_path + '/../'))
 from kinematics import *
 from config_parse import *
 from copy import deepcopy
+from configparser import ConfigParser
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
@@ -47,34 +48,72 @@ if __name__ == '__main__':
     # print(th_d)
 
     print('Test IK 2')
-    pos = np.array([215, 30, 83, -np.pi/2, 0, 0])
+    pos = np.array([400, 400, 0, -np.pi/2, 0, 0])
     th_d = IK_pox(pos)
     print('th_d = ')
     print(th_d)
 
-    # print('Test FK')
-    # fk_poses = []
-    # for joint_angles in fk_angles:
-    #     print('Joint angles:', joint_angles)
-    #     for i, _ in enumerate(joint_angles):
-    #         pose = get_pose_from_T(FK_pox(deepcopy(dh_params), joint_angles, i))
-    #         print('Link {} pose: {}'.format(i, pose))
-    #         if i == len(joint_angles) - 1:
-    #             fk_poses.append(pose)
-    #     print()
+    # config_object["waist"] = {
+    #     "P": 640,
+    #     "I": 0,
+    #     "D": 3600
+    # }
 
-    # print('Test IK')
-    # for pose, angles in zip(fk_poses, fk_angles):
-    #     matching_angles = False
-    #     print('Pose: {}'.format(pose))
-    #     options = IK_geometric(deepcopy(dh_params), pose)
-    #     for i, joint_angles in enumerate(options):
-    #         print('Option {}: {}'.format(i, joint_angles))
-    #         compare = vclamp(joint_angles - angles)
-    #         if np.allclose(compare, np.zeros_like(compare), rtol=1e-3, atol=1e-4):
-    #             print('Option {} matches angles used in FK'.format(i))
-    #             matching_angles = True
-    #     if not matching_angles:
-    #         print('No match to the FK angles found!')
-    #         passed = False
-    #     print()
+    # config_object["shoulder"] = {
+    #     "P": 800,
+    #     "I": 0,
+    #     "D": 0
+    # }
+
+    # config_object["elbow"] = {
+    #     "P": 800,
+    #     "I": 0,
+    #     "D": 0
+    # }
+
+    # config_object["wrist_angle"] = {
+    #     "P": 800,
+    #     "I": 0,
+    #     "D": 0
+    # }
+
+    # config_object["wrist_rotate"] = {
+    #     "P": 640,
+    #     "I": 0,
+    #     "D": 3600
+    # }
+
+    # with open('pid.ini', 'w') as conf:
+    #     config_object.write(conf)
+    config_object = ConfigParser()
+    config_object.read("pid.ini")
+    waist = config_object["waist"]
+    shoulder = config_object["shoulder"]
+    elbow = config_object["elbow"]
+    wrist_angle = config_object["wrist_angle"]
+    wrist_rotate = config_object["wrist_rotate"]
+
+    print("Waist PID Params:")
+    print("P: ", waist["p"])
+    print("I: ", waist["i"])
+    print("D: ", waist["d"])
+
+    print("shoulder PID Params:")
+    print("P: ", shoulder["p"])
+    print("I: ", shoulder["i"])
+    print("D: ", shoulder["d"])
+
+    print("elbow PID Params:")
+    print("P: ", elbow["p"])
+    print("I: ", elbow["i"])
+    print("D: ", elbow["d"])
+
+    print("wrist_angle PID Params:")
+    print("P: ", wrist_angle["p"])
+    print("I: ", wrist_angle["i"])
+    print("D: ", wrist_angle["d"])
+
+    print("wrist_rotate PID Params:")
+    print("P: ", wrist_rotate["p"])
+    print("I: ", wrist_rotate["i"])
+    print("D: ", wrist_rotate["d"])
