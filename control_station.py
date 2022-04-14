@@ -126,8 +126,8 @@ class Gui(QMainWindow):
 
 
         #CN: Print out blocks detected
-        self.ui.btnUser12.setText('ID Blocks')
-        self.ui.btnUser12.clicked.connect(partial(nxt_if_arm_init, 'IDblocks'))
+        self.ui.btnUser13.setText('ID Blocks')
+        self.ui.btnUser13.clicked.connect(partial(nxt_if_arm_init, 'IDblocks'))
 
         # Sliders
         for sldr in self.joint_sliders:
