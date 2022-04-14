@@ -194,7 +194,7 @@ def IK_pox(pose):
     # Th1 can be solved with geometry
     th1 = np.arctan2(pose[1],pose[0]) - np.arctan2(y0,x0)
     th1 = clamp(th1)
-    print("th1 = ", th1)
+    
     # e2.e3.e4.e5 = e-1.gd.gst-1 = g2
     # e2.e3.p4 = g2.p4
     # e2.e3.p4 - p2 = g2.p4 - p2

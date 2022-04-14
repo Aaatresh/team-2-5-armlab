@@ -175,10 +175,10 @@ class StateMachine():
             #otherwise go to next pose
             print(pose)
             self.rxarm.set_positions(pose)
-            if self.waypointGrips[e] == 1:
-                self.rxarm.close_gripper()
-            else:
-                self.rxarm.open_gripper()
+            # if self.waypointGrips[e] == 1:
+            #     self.rxarm.close_gripper()
+            # else:
+            #     self.rxarm.open_gripper()
             rospy.sleep(2.)
             
 
@@ -559,10 +559,50 @@ class StateMachine():
 
         self.next_state="idle"
 
+
+    
+    def moveBlock(self, x, y, z, gripper_state):
+
+        start_joint_state = self.rxarm.get_positions()
+        print("start_state", start_joint_state)
+        # start_joint_state = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
+        
+        final_pose = np.array([x, y, z, -np.pi/2, 0, 0])
+        print("final pose: ", final_pose)
+        final_joint_state = IK_pox(final_pose)
+
+        intermediate_pose = np.array([x, y, z+60, -np.pi/2, 0, 0])
+        print("int pose: ", intermediate_pose)
+        intermediate_joint_state = IK_pox(intermediate_pose)
+
+        print(intermediate_joint_state)
+        print(final_joint_state)
+
+        # hold = input()
+        if(final_joint_state is None or intermediate_joint_state is None):
+            print("INVALID")
+            return 0
+
+        self.waypoints = [intermediate_joint_state, final_joint_state]
+        self.execute_click2grab()
+
+        if(gripper_state == "grab" or gripper_state == "close"):
+            self.rxarm.close_gripper()
+        elif(gripper_state == "drop" or gripper_state == "open"):
+            self.rxarm.open_gripper()
+        else:
+            print("Error! Incorret gripper state given ...")
+
+        self.waypoints = [intermediate_joint_state, start_joint_state]
+        self.execute_click2grab()
+        return 1
+
+
     def comp1(self):
         self.current_state = "comp1"
         self.status_message = "Executing Competition Task 1"
-        
+        snapshotContours = self.camera.block_contours.copy()
+        snapshotBlocks = self.camera.block_detections.copy()
         #Look at every block contour
 
         #If the contour area is greater than X, it is a large block
@@ -582,17 +622,33 @@ class StateMachine():
 
         smallGoalX = -largeGoalX
         smallGoalY = largeGoalY
+        tweak = 20
 
-        for e, block in enumerate(self.camera.block_contours):
+        for e, block in enumerate(snapshotContours):
             #for this block, decide if it is large or small
-            blocksizethresh = 200
-            blockX, blockY, blockZ = self.camera.block_detections[e]
+            blocksizethresh = 1000
+            blockX, blockY, blockZ = snapshotBlocks[e]
             
+            if blockX > 0:
+                blockX += tweak
+            if blockX < 0:
+                blockX -= tweak
+                
+            blockY += 10
+            blockZ += 5
+            dropZ = 75
             if cv2.contourArea(block) > blocksizethresh and blockY >= 0: #if the contour is a large block
                 #grab block, drop at large goal
 
-                moveBlock(blockX,blockY,blockZ,'grab')
-                moveBlock(largeGoalX,largeGoalY,20,'drop')
+                flag = self.moveBlock(blockX,blockY,blockZ,'grab')
+
+                print("flag")
+                if(flag == 0):
+                    self.next_state="idle"
+                    return
+
+                self.moveBlock(largeGoalX,largeGoalY,dropZ,'drop')
+                
                 #indicate that block was sorted
                 sortedthiscycle+=1
 
@@ -600,8 +656,13 @@ class StateMachine():
             if cv2.contourArea(block) < blocksizethresh and blockY >= 0: #if the contour is a small block
                 #grab block, drop at small goal
 
-                moveBlock(blockX,blockY,blockZ,'grab')
-                moveBlock(smallGoalX,smallGoalY,20,'drop')
+                flag = self.moveBlock(blockX,blockY,blockZ,'grab')
+
+                print("flag")
+                if(flag == 0):
+                    self.next_state="idle"
+                    return
+                self.moveBlock(smallGoalX,smallGoalY,dropZ,'drop')
 
                 #indicate that block was sorted
                 sortedthiscycle+=1
