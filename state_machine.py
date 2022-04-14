@@ -8,6 +8,7 @@ import numpy as np
 import rospy
 from datetime import datetime
 import cv2 as cv2
+from configparser import ConfigParser
 
 from kinematics import IK_pox
 
@@ -467,6 +468,11 @@ class StateMachine():
         print("pose: ", pose)
 
         final_joint_state = IK_pox(pose)
+
+        if(final_joint_state is None):
+            print("ERROR: Desired Position is unreachable")
+            self.next_state="idle"
+
         # final_joint_state[2] = final_joint_state[2]*-1
         # final_joint_state[3] = final_joint_state[3]*-1
 
@@ -524,19 +530,33 @@ class StateMachine():
         for name in self.rxarm.joint_names:
             print("{0} gains: {1}".format(name, self.rxarm.get_motor_pid_params(name)))
 
-        print("Enter name of joint to tune")
-        name = input()
-        print("Enter P, I, and D values for selected joint")
-        print("P parametr")
-        p_param = input()
-        print("I parameter")
-        i_param = input()
-        print("D parameter")
-        d_param = input()
+        config_object = ConfigParser()
+        config_object.read("pid.ini")
+        waist = config_object["waist"]
+        shoulder = config_object["shoulder"]
+        elbow = config_object["elbow"]
+        wrist_angle = config_object["wrist_angle"]
+        wrist_rotate = config_object["wrist_rotate"]
 
-        values = [p_param, i_param, d_param]
+        values = [waist["p"], waist["i"], waist["d"]]
+        self.rxarm.set_motor_pid_params("waist", values)
 
-        self.rxarm.set_motor_pid_params(name, values)
+        values = [shoulder["p"], shoulder["i"], shoulder["d"]]
+        self.rxarm.set_motor_pid_params("shoulder", values)
+
+        values = [elbow["p"], elbow["i"], elbow["d"]]
+        self.rxarm.set_motor_pid_params("elbow", values)
+
+        values = [wrist_angle["p"], wrist_angle["i"], wrist_angle["d"]]
+        self.rxarm.set_motor_pid_params("wrist_angle", values)
+
+        values = [wrist_rotate["p"], wrist_rotate["i"], wrist_rotate["d"]]
+        self.rxarm.set_motor_pid_params("wrist_rotate", values)
+
+        print("New PID Params:")
+        for name in self.rxarm.joint_names:
+            print("{0} gains: {1}".format(name, self.rxarm.get_motor_pid_params(name)))
+
         self.next_state="idle"
 
     def comp1(self):
