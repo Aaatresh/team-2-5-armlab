@@ -222,6 +222,25 @@ class RXArm(InterbotixRobot):
         """
         return self.dh_params
 
+    def get_motor_pid_params(self, name):
+        """!
+        @brief      Gets the PID parameters for a motor.
+
+        @param      name        The motor joint name.
+
+        @return     The motor PID parameters.
+        """
+        return self.get_joint_position_pid_params(name)
+
+    def set_motor_pid_params(self, name, values):
+        """!
+        @brief      Sets the PID parameters for a motor.
+
+        @param      joint_name - name of joint to set gains for
+        @param      values - a vector of length 3 containing the desired Kp, Ki, and Kd (respectively)
+        """
+        self.set_joint_position_pid_params(name, values)
+
 
 class RXArmThread(QThread):
     """!

@@ -128,6 +128,13 @@ class Gui(QMainWindow):
         #CN: Print out blocks detected
         self.ui.btnUser13.setText('ID Blocks')
         self.ui.btnUser13.clicked.connect(partial(nxt_if_arm_init, 'IDblocks'))
+        #click to grab
+        self.ui.btnUser11.setText('Grab Click')
+        self.ui.btnUser11.clicked.connect(partial(nxt_if_arm_init, 'grabclick'))
+
+        #PID tuning
+        self.ui.btnUser12.setText('PID Tune')
+        self.ui.btnUser12.clicked.connect(partial(nxt_if_arm_init, 'tunePID'))
 
         # Sliders
         for sldr in self.joint_sliders:
