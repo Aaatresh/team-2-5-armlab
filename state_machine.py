@@ -797,10 +797,12 @@ class StateMachine():
                 
                 # self.next_state="idle"
 
-    def sort_blocks(self, snapshotContours, block_thresh):
+    def sort_blocks(self, color_indices, snapshotContours, block_thresh):
 
         large_blocks = []
         small_blocks = []
+
+        sorted_indices = color_indices[:, 0].argsort()
 
         for block_contour in snapshotContours:
             if(cv2.contourArea(block_contour) > block_thresh):
@@ -824,10 +826,12 @@ class StateMachine():
 
         snapshotContours = self.camera.block_contours.copy()
         snapshotBlocks = self.camera.block_detections.copy()
+        color_indices = self.camera.color_indices.copy()
         # Look at every block contour
 
         # Sort contours and blocks
-        sorted_indices = self.sort_blocks(snapshotContours, blocksizethresh)
+        # sorted_indices = self.sort_blocks(color_indices, snapshotContours, blocksizethresh)
+        sorted_indices = color_indices[:, 0].argsort()
         snapshotContours = snapshotContours[sorted_indices]
         snapshotBlocks = snapshotBlocks[sorted_indices]
 
@@ -851,9 +855,8 @@ class StateMachine():
 
             # blockY += 10
             blockZ += 5
-            if (self.comp1_start == True):
-                self.dropZ_large = 75
-                self.dropZ_small = 40
+            self.dropZ_large = 75
+            self.dropZ_small = 40
 
             if cv2.contourArea(block) > blocksizethresh:  # if the contour is a large block
                 # grab block, drop at large goal

@@ -45,7 +45,7 @@ class Camera():
         self.tag_locations = [[-250, -25], [250, -25], [250, 275]]
         """ block info """
         self.block_contours = np.array([])
-        self.indexed_block_contours = []
+        self.color_indices = np.array([])
         self.block_detections = np.array([])
 
         self.block_detectionsCAMCOORD = np.array([])
@@ -361,7 +361,6 @@ class Camera():
         purpleMask = cv2.inRange(imgMasked_hsv,purpleLowHSV,purpleHighHSV)
         purpleOnly = cv2.bitwise_and(imgMasked_rgb,imgMasked_rgb,mask=purpleMask)
         _, contours, _ = cv2.findContours(purpleMask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        semi_viableContours = []
         viableContours = []
         # print("start area check")
 
@@ -382,14 +381,16 @@ class Camera():
 
                     # print(cv2.contourArea(contour))
                     # print(rect[1][1]/rect[1][0])
-                    semi_viableContours.append(contour)
+                    viableContours.append(contour)
 
 
         centroids = []
         centroidsCAMCOORD = []
+        color_indices = []
+
         del self.block_colors[:]
         del self.block_colors_H[:]
-        for contour in semi_viableContours:
+        for contour in viableContours:
             contourcolor, meanHSVh = retrieve_area_color(rgbraw,contour,colors)
 
             annotateColor = annotate[contourcolor]
@@ -410,10 +411,6 @@ class Camera():
             cX = int(M["m10"] / M["m00"])
             cY = int(M["m01"] / M["m00"])
 
-            if(annotateColor is not "none"):
-                contour.append(annotateColor_index)
-                viableContours.append(contour)
-
             worldCoordCentroid = self.camXY2worldXYZ(cX,cY)
             centroids.append(worldCoordCentroid)
           
@@ -421,11 +418,13 @@ class Camera():
           
             centroidsCAMCOORD.append([cX,cY])
 
+            color_indices.append(annotateColor_index)
+
         # cv2.drawContours(rgb_image, viableContours, -1, (0,255,255), 3)
         self.block_detections = np.array(centroids)
         self.block_detectionsCAMCOORD = np.array(centroidsCAMCOORD)
-        self.block_contours = np.array(semi_viableContours)
-        self.indexed_block_contours = viableContours
+        self.block_contours = np.array(viableContours)
+        self.color_indices = np.array(color_indices).reshape(-1, 1)
 
 
     def detectBlocksInDepthImage(self):
