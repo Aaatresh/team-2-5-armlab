@@ -796,12 +796,110 @@ class StateMachine():
                         self.next_state="idle"
                 
                 # self.next_state="idle"
+
+    def sort_blocks(self, snapshotContours, block_thresh):
+
+        large_blocks = []
+        small_blocks = []
+
+        for block_contour in snapshotContours:
+            if(cv2.contourArea(block_contour) > block_thresh):
+                large_blocks.append(block_contour)
+            else:
+                small_blocks.append(block_contour)
+
+        large_blocks = np.array(large_blocks)
+        large_block_sorted_ind = large_blocks[:, -1].argsort()
+        small_blocks = np.array(small_blocks)
+        small_block_sorted_ind = small_blocks[:, -1].argsort()
+
+        return large_block_sorted_ind + small_block_sorted_ind
+
+
+
     def comp3(self):
         self.current_state = "comp3"
         self.status_message = "Executing Competition Task 3"
-        
-        
-        self.next_state="idle"
+        blocksizethresh = 1000
+
+        snapshotContours = self.camera.block_contours.copy()
+        snapshotBlocks = self.camera.block_detections.copy()
+        # Look at every block contour
+
+        # Sort contours and blocks
+        sorted_indices = self.sort_blocks(snapshotContours, blocksizethresh)
+        snapshotContours = snapshotContours[sorted_indices]
+        snapshotBlocks = snapshotBlocks[sorted_indices]
+
+
+        sortedthiscycle = 0
+        largeGoalX = 200
+        largeGoalY = -25
+
+        smallGoalX = -largeGoalX
+        smallGoalY = largeGoalY
+        tweak = 20
+
+        for e, block in enumerate(snapshotContours):
+            # for this block, decide if it is large or small
+            blockX, blockY, blockZ = snapshotBlocks[e]
+
+            if blockX > 0:
+                blockX += tweak
+            if blockX < 0:
+                blockX -= tweak
+
+            # blockY += 10
+            blockZ += 5
+            if (self.comp1_start == True):
+                self.dropZ_large = 75
+                self.dropZ_small = 40
+
+            if cv2.contourArea(block) > blocksizethresh:  # if the contour is a large block
+                # grab block, drop at large goal
+
+                flag = self.moveBlock(blockX, blockY, blockZ, 'grab')
+
+                # print("flag")
+                if (flag == 0):
+                    self.next_state = "idle"
+                    return
+
+                self.moveBlock(largeGoalX, largeGoalY, self.dropZ_large, 'drop')
+
+                # indicate that block was sorted
+                sortedthiscycle += 1
+                largeGoalY += 60
+                # if largeGoalX > 386:
+                #     largeGoalX = 150
+                #     self.dropZ_large += 25
+
+            if cv2.contourArea(block) < blocksizethresh:  # if the contour is a small block
+                # grab block, drop at small goal
+
+                flag = self.moveBlock(blockX, blockY, blockZ, 'grab')
+
+                # print("flag")
+                if (flag == 0):
+                    self.next_state = "idle"
+                    return
+                self.moveBlock(smallGoalX, smallGoalY, self.dropZ_small, 'drop')
+
+                # indicate that block was sorted
+                sortedthiscycle += 1
+                smallGoalY += 40
+                # if smallGoalX < -386:
+                #     smallGoalX = -150
+                #     self.dropZ_small += 15
+
+        if sortedthiscycle != 0:
+            self.next_state = "comp1"
+            # self.comp1_start = False
+
+        if sortedthiscycle == 0:
+            self.next_state = "idle"
+            # self.comp1_start = True
+
     def comp4(self):
         self.current_state = "comp4"
         self.status_message = "Executing Competition Task 4"

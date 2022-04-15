@@ -45,7 +45,9 @@ class Camera():
         self.tag_locations = [[-250, -25], [250, -25], [250, 275]]
         """ block info """
         self.block_contours = np.array([])
+        self.indexed_block_contours = []
         self.block_detections = np.array([])
+
         self.block_detectionsCAMCOORD = np.array([])
         self.block_colors = []
         self.block_colors_H = []
@@ -278,13 +280,13 @@ class Camera():
         img = 'armlab_opencv_examples-master/image_all_blocks.png'
         imgD = 'armlab_opencv_examples-master/depth_all_blocks.png'
 
-        annotate = {'red': (10, 10, 127),
+        annotate = OrderedDict({'red': (10, 10, 127),
             'orange': (30, 75, 150),
             'yellow': (30, 150, 200),
             'green': (20, 60, 20),
             'blue': (100, 50, 0),
             'purple': (100, 40, 80),
-            'none': (0,0,0)}
+            'none': (0,0,0)})
 
 
         # img = 'armlab_opencv_examples-master/image_test.png'
@@ -359,6 +361,7 @@ class Camera():
         purpleMask = cv2.inRange(imgMasked_hsv,purpleLowHSV,purpleHighHSV)
         purpleOnly = cv2.bitwise_and(imgMasked_rgb,imgMasked_rgb,mask=purpleMask)
         _, contours, _ = cv2.findContours(purpleMask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        semi_viableContours = []
         viableContours = []
         # print("start area check")
 
@@ -379,17 +382,18 @@ class Camera():
 
                     # print(cv2.contourArea(contour))
                     # print(rect[1][1]/rect[1][0])
-                    viableContours.append(contour)
+                    semi_viableContours.append(contour)
 
 
         centroids = []
         centroidsCAMCOORD = []
         del self.block_colors[:]
         del self.block_colors_H[:]
-        for contour in viableContours:
+        for contour in semi_viableContours:
             contourcolor, meanHSVh = retrieve_area_color(rgbraw,contour,colors)
 
             annotateColor = annotate[contourcolor]
+            annotateColor_index = annotate.keys().index(contourcolor)
             self.block_colors.append(contourcolor)
             self.block_colors_H.append(meanHSVh)
             self.block_sizes.append(cv2.contourArea(contour))
@@ -405,7 +409,11 @@ class Camera():
             M = cv2.moments(contour)
             cX = int(M["m10"] / M["m00"])
             cY = int(M["m01"] / M["m00"])
-            
+
+            if(annotateColor is not "none"):
+                contour.append(annotateColor_index)
+                viableContours.append(contour)
+
             worldCoordCentroid = self.camXY2worldXYZ(cX,cY)
             centroids.append(worldCoordCentroid)
           
@@ -416,7 +424,8 @@ class Camera():
         # cv2.drawContours(rgb_image, viableContours, -1, (0,255,255), 3)
         self.block_detections = np.array(centroids)
         self.block_detectionsCAMCOORD = np.array(centroidsCAMCOORD)
-        self.block_contours = np.array(viableContours)
+        self.block_contours = np.array(semi_viableContours)
+        self.indexed_block_contours = viableContours
 
 
     def detectBlocksInDepthImage(self):
