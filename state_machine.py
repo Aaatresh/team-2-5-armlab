@@ -575,7 +575,7 @@ class StateMachine():
 
 
         final_pose = np.array([x, y, z, -np.pi/2, 0, 0])
-        # print("final pose: ", final_pose)
+        print("final pose: ", final_pose)
         final_joint_state = IK_pox(final_pose)
 
         intermediate_pose = np.array([x, y, z+60, -np.pi/2, 0, 0])
@@ -583,7 +583,7 @@ class StateMachine():
         intermediate_joint_state = IK_pox(intermediate_pose)
 
         # print(intermediate_joint_state)
-        # print(final_joint_state)
+        print(final_joint_state)
 
         # hold = input()
         if(final_joint_state is None or intermediate_joint_state is None):
@@ -635,7 +635,7 @@ class StateMachine():
 
         smallGoalX = -largeGoalX
         smallGoalY = largeGoalY
-        tweak = 20
+        tweak = 0
 
         for e, block in enumerate(snapshotContours):
             #for this block, decide if it is large or small
@@ -650,7 +650,7 @@ class StateMachine():
             # blockY += 10
             blockZ += 5
             if(self.comp1_start == True):
-                self.dropZ_large = 75
+                self.dropZ_large = 55
                 self.dropZ_small = 40
             
             if cv2.contourArea(block) > blocksizethresh and blockY >= 0: #if the contour is a large block
@@ -670,7 +670,7 @@ class StateMachine():
                 largeGoalX += 50
                 if largeGoalX > 386:
                     largeGoalX = 150
-                    self.dropZ_large += 25
+                    self.dropZ_large += 40
 
 
             if cv2.contourArea(block) < blocksizethresh and blockY >= 0: #if the contour is a small block
@@ -686,10 +686,10 @@ class StateMachine():
 
                 #indicate that block was sorted
                 sortedthiscycle+=1
-                smallGoalX -= 25
+                smallGoalX -= 45
                 if smallGoalX < -386:
                     smallGoalX = -150
-                    self.dropZ_small += 15
+                    self.dropZ_small += 25
                 
         if sortedthiscycle != 0:
             self.next_state="comp1"
@@ -733,7 +733,7 @@ class StateMachine():
         # tweak = 10
 
         #open loop
-        dropZlarge = 40
+        dropZlarge = 42
         dropZsmall = 26
 
         #closed loop drop height
@@ -743,10 +743,10 @@ class StateMachine():
                     blocksizethresh = 1000
                     blockX, blockY, blockZ = snapshotBlocks[e]
                     
-                    if blockX > 0:
-                        blockX += 20
-                    if blockX < 0:
-                        blockX -= 15
+                    # if blockX > 0:
+                    #     blockX += 20
+                    # if blockX < 0:
+                    #     blockX -= 15
                         
                     # blockY += 10
                     blockZ += 5
@@ -783,7 +783,7 @@ class StateMachine():
 
                         #drop the next one higher
                         # dropZsmall += 25
-                        dropZsmall += 26
+                        dropZsmall += 24
 
                         #indicate that block was sorted
                         sortedthiscycle+=1

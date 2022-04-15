@@ -334,10 +334,10 @@ class Gui(QMainWindow):
             else:
                 wpX = xyz1_w[0,0] * 100/94 + 2.15
             
-            if(xyz1_w[1,0] > 175):
-                wpY = xyz1_w[1,0] * 10/9 - 19.4444
+            if(xyz1_w[1,0] >= 175):
+                wpY = xyz1_w[1,0] * 1.0922 - 14.4444
             else:
-                wpY = xyz1_w[1,0]
+                wpY = xyz1_w[1,0] * 100/95 - 9.21
                 
             wpZ = 976-z #just use depth cam
             self.ui.rdoutMouseWorld.setText("(%.0f,%.0f,%.0f)" %
