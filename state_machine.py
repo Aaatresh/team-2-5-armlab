@@ -824,6 +824,15 @@ class StateMachine():
         self.status_message = "Executing Competition Task 3"
         blocksizethresh = 1000
 
+        color_positions = np.array([
+            [200, -25],
+            [200, 25],
+            [200, 75],
+            [200, 125],
+            [200, 175],
+            [200, 225]
+        ])
+
         snapshotContours = self.camera.block_contours.copy()
         snapshotBlocks = self.camera.block_detections.copy()
         color_indices = self.camera.color_indices.copy()
@@ -832,6 +841,7 @@ class StateMachine():
         # Sort contours and blocks
         # sorted_indices = self.sort_blocks(color_indices, snapshotContours, blocksizethresh)
         sorted_indices = color_indices[:, 0].argsort()
+        color_indices = color_indices[sorted_indices]
         snapshotContours = snapshotContours[sorted_indices]
         snapshotBlocks = snapshotBlocks[sorted_indices]
 
@@ -868,7 +878,8 @@ class StateMachine():
                     self.next_state = "idle"
                     return
 
-                self.moveBlock(largeGoalX, largeGoalY, self.dropZ_large, 'drop')
+                self.moveBlock(color_positions[color_indices[e]][0],
+                    color_positions[color_indices[e]][1], self.dropZ_large, 'drop')
 
                 # indicate that block was sorted
                 sortedthiscycle += 1
@@ -886,7 +897,9 @@ class StateMachine():
                 if (flag == 0):
                     self.next_state = "idle"
                     return
-                self.moveBlock(smallGoalX, smallGoalY, self.dropZ_small, 'drop')
+
+                self.moveBlock(-color_positions[color_indices[e]][0],
+                               color_positions[color_indices[e]][1], self.dropZ_small, 'drop')
 
                 # indicate that block was sorted
                 sortedthiscycle += 1
