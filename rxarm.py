@@ -127,14 +127,15 @@ class RXArm(InterbotixRobot):
                               blocking=False)
         self.initialized = False
 
-    def set_positions(self, joint_positions):
+    def set_positions(self, joint_positions, moving_time=2.0):
         """!
          @brief      Sets the positions.
 
          @param      joint_angles  The joint angles
+         @param      moving_time   The time for the movement
          """
         self.set_joint_positions(joint_positions,
-                                 moving_time=self.moving_time,
+                                 moving_time=moving_time,
                                  accel_time=self.accel_time,
                                  blocking=False)
 
