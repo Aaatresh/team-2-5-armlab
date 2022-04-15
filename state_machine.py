@@ -564,25 +564,35 @@ class StateMachine():
     def moveBlock(self, x, y, z, gripper_state):
 
         start_joint_state = self.rxarm.get_positions()
-        print("start_state", start_joint_state)
+        # print("start_state", start_joint_state)
         # start_joint_state = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
-        
+        zero_pose = np.array([0.0, 0.0 , 0.0, 0.0, 0.0, 0.0])
+        start_joint_state[1] = 0.0
+        start_joint_state[2] = 0.0
+        start_joint_state[3] = 0.0
+
+
         final_pose = np.array([x, y, z, -np.pi/2, 0, 0])
-        print("final pose: ", final_pose)
+        # print("final pose: ", final_pose)
         final_joint_state = IK_pox(final_pose)
 
         intermediate_pose = np.array([x, y, z+60, -np.pi/2, 0, 0])
-        print("int pose: ", intermediate_pose)
+        # print("int pose: ", intermediate_pose)
         intermediate_joint_state = IK_pox(intermediate_pose)
 
-        print(intermediate_joint_state)
-        print(final_joint_state)
+        # print(intermediate_joint_state)
+        # print(final_joint_state)
 
         # hold = input()
         if(final_joint_state is None or intermediate_joint_state is None):
             print("INVALID")
             return 0
 
+        # if(gripper_state == "grab" or gripper_state == "close"):
+        #     self.waypoints = [intermediate_joint_state, final_joint_state]
+        # elif(gripper_state == "drop" or gripper_state == "open"):
+        #     self.waypoints = [intermediate_joint_state, final_joint_state]
+        
         self.waypoints = [intermediate_joint_state, final_joint_state]
         self.execute_click2grab()
 
@@ -593,7 +603,8 @@ class StateMachine():
         else:
             print("Error! Incorret gripper state given ...")
 
-        self.waypoints = [intermediate_joint_state, start_joint_state]
+        # self.waypoints = [intermediate_joint_state, start_joint_state]
+        self.waypoints = [intermediate_joint_state]
         self.execute_click2grab()
         return 1
 
@@ -617,7 +628,7 @@ class StateMachine():
         #Else print DONE, go "idle"
 
         sortedthiscycle = 0
-        largeGoalX = 200
+        largeGoalX = 150
         largeGoalY = -100
 
         smallGoalX = -largeGoalX
@@ -634,7 +645,7 @@ class StateMachine():
             if blockX < 0:
                 blockX -= tweak
                 
-            blockY += 10
+            # blockY += 10
             blockZ += 5
             dropZ = 75
             if cv2.contourArea(block) > blocksizethresh and blockY >= 0: #if the contour is a large block
@@ -642,7 +653,7 @@ class StateMachine():
 
                 flag = self.moveBlock(blockX,blockY,blockZ,'grab')
 
-                print("flag")
+                # print("flag")
                 if(flag == 0):
                     self.next_state="idle"
                     return
@@ -651,6 +662,9 @@ class StateMachine():
                 
                 #indicate that block was sorted
                 sortedthiscycle+=1
+                largeGoalX += 50
+                if largeGoalX > 386:
+                    largeGoalX = 150
 
 
             if cv2.contourArea(block) < blocksizethresh and blockY >= 0: #if the contour is a small block
@@ -658,7 +672,7 @@ class StateMachine():
 
                 flag = self.moveBlock(blockX,blockY,blockZ,'grab')
 
-                print("flag")
+                # print("flag")
                 if(flag == 0):
                     self.next_state="idle"
                     return
@@ -666,6 +680,9 @@ class StateMachine():
 
                 #indicate that block was sorted
                 sortedthiscycle+=1
+                smallGoalX -= 25
+                if smallGoalX < -386:
+                    smallGoalX = -150
                 
         if sortedthiscycle != 0:
             self.next_state="comp1"
@@ -676,9 +693,94 @@ class StateMachine():
     def comp2(self):
         self.current_state = "comp2"
         self.status_message = "Executing Competition Task 2"
+        sortedthiscycle = 0
+        snapshotContours = self.camera.block_contours.copy()
+        snapshotBlocks = self.camera.block_detections.copy()
+        #Goal: Stack blocks 3 high in seperate stacks, autonomously.
+
+        #Only consider contours that are still on the ground
+        #If no contours are ground height, we are done; set the next state to idle
         
-        
-        self.next_state="idle"
+        #Set initial stack locations 
+        smallStackX = -160
+        StackY = -50
+        largeStackX = -280
+
+        #Choose first block to stack (next block on list with ground Z height)
+
+        #Grab that block
+
+        #Move it to the X,Y of the stack, Z height + offset (set down block 2 on tower)
+
+        #increase Z offset by one block
+
+        #repeat (set down block 3 on tower)
+
+        #move to new stack location (an existing ground block?)
+
+
+        #run comp2 again. If no flag is raised to indicate stacking occured, go idle
+
+        tweak = 0
+        dropZlarge = 40
+        dropZsmall = 26
+
+        for e, block in enumerate(snapshotContours):
+                    #for this block, decide if it is large or small
+                    blocksizethresh = 1000
+                    blockX, blockY, blockZ = snapshotBlocks[e]
+                    
+                    if blockX > 0:
+                        blockX += tweak
+                    if blockX < 0:
+                        blockX -= tweak
+                        
+                    blockY += 10
+                    blockZ += 5
+                    
+                    if cv2.contourArea(block) > blocksizethresh and blockY >= 0: #if the contour is a large block
+                        #grab block, drop at large goal
+
+                        flag = self.moveBlock(blockX,blockY,blockZ,'grab')
+
+                        # print("flag")
+                        if(flag == 0):
+                            self.next_state="idle"
+                            return
+
+                        self.moveBlock(largeStackX,StackY,dropZlarge,'drop')
+                        #drop next block one increment higher
+                        # dropZlarge += 38.5
+                        dropZlarge += 40
+                        #indicate that block was sorted
+                        sortedthiscycle+=1
+
+
+                    if cv2.contourArea(block) < blocksizethresh and blockY >= 0: #if the contour is a small block
+                        #grab block, drop at small goal
+
+                        flag = self.moveBlock(blockX,blockY,blockZ,'grab')
+
+                        # print("flag")
+                        if(flag == 0):
+                            self.next_state="idle"
+                            return
+                        self.moveBlock(smallStackX,StackY,dropZsmall,'drop')
+
+                        #drop the next one higher
+                        # dropZsmall += 25
+                        dropZsmall += 26
+                        #indicate that block was sorted
+                        sortedthiscycle+=1
+
+                        
+                    if sortedthiscycle != 0:
+                        self.next_state="comp2"
+
+                    if sortedthiscycle ==0:
+                        self.next_state="idle"
+                
+                # self.next_state="idle"
     def comp3(self):
         self.current_state = "comp3"
         self.status_message = "Executing Competition Task 3"

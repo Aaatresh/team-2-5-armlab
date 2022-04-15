@@ -367,6 +367,7 @@ class Camera():
                 box = cv2.boxPoints(rect)
                 box = np.int0(box)
                 if .75 < rect[1][1]/rect[1][0] < 1.25: #check squareness. if square enough, consider a block
+                    
                     cv2.drawContours(rgb_image,[box],0,(0,0,255),2)
 
                     # print(cv2.contourArea(contour))
@@ -401,6 +402,7 @@ class Camera():
             worldCoordCentroid = self.camXY2worldXYZ(cX,cY)
             centroids.append(worldCoordCentroid)
           
+            cv2.circle(rgb_image, (cX, cY), 3, (255, 255, 255), -1)
           
             centroidsCAMCOORD.append([cX,cY])
 
