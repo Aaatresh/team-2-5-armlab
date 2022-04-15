@@ -329,9 +329,16 @@ class Gui(QMainWindow):
 
             xyz1_w = np.matmul(invExtMtx,np.array([[xyz_c[0,0]],[xyz_c[1,0]],[xyz_c[2,0]],[1]]))
             
-            wpX = xyz1_w[0,0]
-            wpY = xyz1_w[1,0]
-            # wpZ = xyz1_w[2,0]
+            if(xyz1_w[0,0] < 0):
+                wpX = xyz1_w[0,0] * 100/95
+            else:
+                wpX = xyz1_w[0,0] * 100/94 + 2.15
+            
+            if(xyz1_w[1,0] > 175):
+                wpY = xyz1_w[1,0] * 10/9 - 19.4444
+            else:
+                wpY = xyz1_w[1,0]
+                
             wpZ = 976-z #just use depth cam
             self.ui.rdoutMouseWorld.setText("(%.0f,%.0f,%.0f)" %
                                             (wpX,wpY,wpZ))

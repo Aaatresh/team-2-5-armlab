@@ -50,6 +50,7 @@ class Camera():
         self.block_colors = []
         self.block_colors_H = []
         self.block_sizes = []
+        self.block_color_nums = []
 
     def processVideoFrame(self):
         """!
@@ -290,6 +291,8 @@ class Camera():
         # imgD = 'armlab_opencv_examples-master/depth_test.png'
 
 
+        # lower = 900
+        # upper = 965
         lower = 900
         upper = 965
 
@@ -361,7 +364,11 @@ class Camera():
 
         for contour in contoursOG:
             if cv2.contourArea(contour) > 200: #check contour area, filter out anything too small
+                
+                ### NEW: SLICE THE TOP OF THE CONTOUR ONLY
+                
 
+                ###
                 #make a rotated bounding rectangle (7b at https://docs.opencv.org/4.x/dd/d49/tutorial_py_contour_features.html)
                 rect = cv2.minAreaRect(contour)
                 box = cv2.boxPoints(rect)
@@ -436,23 +443,25 @@ class Camera():
             [np.zeros((1,3)),np.ones((1,1))]
         ])
 
-        Kteam =   np.array([[954.6327,0,629.4831],[0,968.4867,386.4730],[0,0,1.0000]])
+        Kteam =   np.array([[954.6327,0,629.4831],[0,968.4867,386.4730],[0,0,1.0000]],dtype=np.float32)
         Kinv = np.linalg.inv(Kteam)
 
         Pteam = np.array([[975.5068,0,628.0801],[0,993.6321,386.8233],[0, 0, 1.0000]])
         Pinv = np.linalg.inv(Pteam)
+
+        distcoeff = np.array([0.1505,-0.2453,0.0002,-0.0014]).reshape((4,1))
 
         if self.DepthFrameRaw.any() != 0:
             z = self.DepthFrameRaw[camY][camX]
             
             uv1 = np.array([[camX],[camY],[1]])
      
-            xyz_c = z*np.matmul(Pinv,uv1)
+            xyz_c = z*np.matmul(Kinv,uv1)
  
             xyz1_w = np.matmul(invExtMtx,np.array([[xyz_c[0,0]],[xyz_c[1,0]],[xyz_c[2,0]],[1]]))
             
-            wpX = xyz1_w[0,0]
-            wpY = xyz1_w[1,0]
+            wpX = xyz1_w[0,0] * 100/95
+            wpY = xyz1_w[1,0]# * 10/9 - 19.4444
             # wpZ = xyz1_w[2,0]
             wpZ = 976-z #just use depth cam
 

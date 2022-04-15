@@ -50,6 +50,7 @@ class StateMachine():
             [0.0,             0.0,     0.0,      0.0,     0.0]]
 
         self.waypointGrips = 0 
+        self.comp1_start = True
         
 
     def set_next_state(self, state):
@@ -124,6 +125,7 @@ class StateMachine():
             self.tunePID()
 #COMPETITION STATES
         if self.next_state == "comp1":
+            self.comp1_start = True
             self.comp1()
         if self.next_state == "comp2":
             self.comp2()
@@ -229,7 +231,7 @@ class StateMachine():
 
         """TODO Perform camera calibration routine here"""
         global ExtMtx
-        points3d = np.array([[-250, -25, 0],[250, -25, 0],[250, 275, 0],[-250, 275, 0]],dtype=np.float32)
+        points3d = np.array([[-250, -25, 0],[250, -25, 0],[250, 275, 0],[-250, 275, 0],[0, 175, 0],[0, 425, 0]],dtype=np.float32)
         points2d = np.array([[431,580],[905,581],[902,295],[434,295]],dtype=np.float32) #camera at home position, hardcode loc of april
 
         # for calpoints in points2d:
@@ -241,7 +243,7 @@ class StateMachine():
         self.status_message = "Calibration - Click on points"
         self.next_state = "idle"
         # self.current_state = "calibrate"
-        for pt_num in range(4):
+        for pt_num in range(6):
 
             print("waiting for point ", str(pt_num+1))
 
@@ -647,7 +649,10 @@ class StateMachine():
                 
             # blockY += 10
             blockZ += 5
-            dropZ = 75
+            if(self.comp1_start == True):
+                self.dropZ_large = 75
+                self.dropZ_small = 40
+            
             if cv2.contourArea(block) > blocksizethresh and blockY >= 0: #if the contour is a large block
                 #grab block, drop at large goal
 
@@ -658,13 +663,14 @@ class StateMachine():
                     self.next_state="idle"
                     return
 
-                self.moveBlock(largeGoalX,largeGoalY,dropZ,'drop')
+                self.moveBlock(largeGoalX,largeGoalY,self.dropZ_large,'drop')
                 
                 #indicate that block was sorted
                 sortedthiscycle+=1
                 largeGoalX += 50
                 if largeGoalX > 386:
                     largeGoalX = 150
+                    self.dropZ_large += 25
 
 
             if cv2.contourArea(block) < blocksizethresh and blockY >= 0: #if the contour is a small block
@@ -676,19 +682,22 @@ class StateMachine():
                 if(flag == 0):
                     self.next_state="idle"
                     return
-                self.moveBlock(smallGoalX,smallGoalY,dropZ,'drop')
+                self.moveBlock(smallGoalX,smallGoalY,self.dropZ_small,'drop')
 
                 #indicate that block was sorted
                 sortedthiscycle+=1
                 smallGoalX -= 25
                 if smallGoalX < -386:
                     smallGoalX = -150
+                    self.dropZ_small += 15
                 
         if sortedthiscycle != 0:
             self.next_state="comp1"
+            self.comp1_start = False
 
         if sortedthiscycle ==0:
             self.next_state="idle"
+            self.comp1_start = True
 
     def comp2(self):
         self.current_state = "comp2"
@@ -721,21 +730,25 @@ class StateMachine():
 
         #run comp2 again. If no flag is raised to indicate stacking occured, go idle
 
-        tweak = 0
+        # tweak = 10
+
+        #open loop
         dropZlarge = 40
         dropZsmall = 26
 
+        #closed loop drop height
+        self.camera.DepthFrameRaw
         for e, block in enumerate(snapshotContours):
                     #for this block, decide if it is large or small
                     blocksizethresh = 1000
                     blockX, blockY, blockZ = snapshotBlocks[e]
                     
                     if blockX > 0:
-                        blockX += tweak
+                        blockX += 20
                     if blockX < 0:
-                        blockX -= tweak
+                        blockX -= 15
                         
-                    blockY += 10
+                    # blockY += 10
                     blockZ += 5
                     
                     if cv2.contourArea(block) > blocksizethresh and blockY >= 0: #if the contour is a large block
@@ -752,6 +765,7 @@ class StateMachine():
                         #drop next block one increment higher
                         # dropZlarge += 38.5
                         dropZlarge += 40
+
                         #indicate that block was sorted
                         sortedthiscycle+=1
 
@@ -770,6 +784,7 @@ class StateMachine():
                         #drop the next one higher
                         # dropZsmall += 25
                         dropZsmall += 26
+
                         #indicate that block was sorted
                         sortedthiscycle+=1
 
