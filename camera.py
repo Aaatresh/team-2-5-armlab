@@ -52,6 +52,8 @@ class Camera():
         self.block_sizes = []
         self.block_color_nums = []
 
+        self.color_indices = np.array([])
+
     def processVideoFrame(self):
         """!
         @brief      Process a video frame
@@ -384,12 +386,18 @@ class Camera():
 
         centroids = []
         centroidsCAMCOORD = []
+        color_indices = []
+
         del self.block_colors[:]
         del self.block_colors_H[:]
         for contour in viableContours:
             contourcolor, meanHSVh = retrieve_area_color(rgbraw,contour,colors)
 
             annotateColor = annotate[contourcolor]
+
+            annotateColor_index = annotate.keys().index(contourcolor)
+            color_indices.append(annotateColor_index)
+
             self.block_colors.append(contourcolor)
             self.block_colors_H.append(meanHSVh)
             self.block_sizes.append(cv2.contourArea(contour))
@@ -417,6 +425,7 @@ class Camera():
         self.block_detections = np.array(centroids)
         self.block_detectionsCAMCOORD = np.array(centroidsCAMCOORD)
         self.block_contours = np.array(viableContours)
+        self.color_indices = np.array(color_indices).reshape(-1, 1)
 
 
     def detectBlocksInDepthImage(self):
