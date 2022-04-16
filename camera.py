@@ -49,6 +49,10 @@ class Camera():
         self.block_detectionsCAMCOORD = np.array([])
         self.block_colors = []
         self.block_colors_H = []
+        self.block_sizes = []
+        self.block_color_nums = []
+
+        self.color_indices = np.array([])
 
     def processVideoFrame(self):
         """!
@@ -289,6 +293,8 @@ class Camera():
         # imgD = 'armlab_opencv_examples-master/depth_test.png'
 
 
+        # lower = 900
+        # upper = 965
         lower = 900
         upper = 965
 
@@ -359,13 +365,18 @@ class Camera():
         # print("start area check")
 
         for contour in contoursOG:
-            if cv2.contourArea(contour) > 350: #check contour area, filter out anything too small
+            if cv2.contourArea(contour) > 200: #check contour area, filter out anything too small
+                
+                ### NEW: SLICE THE TOP OF THE CONTOUR ONLY
+                
 
+                ###
                 #make a rotated bounding rectangle (7b at https://docs.opencv.org/4.x/dd/d49/tutorial_py_contour_features.html)
                 rect = cv2.minAreaRect(contour)
                 box = cv2.boxPoints(rect)
                 box = np.int0(box)
                 if .75 < rect[1][1]/rect[1][0] < 1.25: #check squareness. if square enough, consider a block
+                    
                     cv2.drawContours(rgb_image,[box],0,(0,0,255),2)
 
                     # print(cv2.contourArea(contour))
@@ -375,15 +386,21 @@ class Camera():
 
         centroids = []
         centroidsCAMCOORD = []
+        color_indices = []
+
         del self.block_colors[:]
         del self.block_colors_H[:]
         for contour in viableContours:
             contourcolor, meanHSVh = retrieve_area_color(rgbraw,contour,colors)
 
             annotateColor = annotate[contourcolor]
+
+            annotateColor_index = annotate.keys().index(contourcolor)
+            color_indices.append(annotateColor_index)
+
             self.block_colors.append(contourcolor)
             self.block_colors_H.append(meanHSVh)
-
+            self.block_sizes.append(cv2.contourArea(contour))
             x = 30
             annotateColor = [annotateColor[0]+x,annotateColor[1]+x,annotateColor[2]+x]
             # cv2.drawContours(rgb_image, contour, -1, annotateColor, 3)
@@ -400,6 +417,7 @@ class Camera():
             worldCoordCentroid = self.camXY2worldXYZ(cX,cY)
             centroids.append(worldCoordCentroid)
           
+            cv2.circle(rgb_image, (cX, cY), 3, (255, 255, 255), -1)
           
             centroidsCAMCOORD.append([cX,cY])
 
@@ -407,6 +425,8 @@ class Camera():
         self.block_detections = np.array(centroids)
         self.block_detectionsCAMCOORD = np.array(centroidsCAMCOORD)
         self.block_contours = np.array(viableContours)
+        self.color_indices = np.array(color_indices).reshape(-1, 1)
+
 
     def detectBlocksInDepthImage(self):
         """!
@@ -432,11 +452,13 @@ class Camera():
             [np.zeros((1,3)),np.ones((1,1))]
         ])
 
-        Kteam =   np.array([[954.6327,0,629.4831],[0,968.4867,386.4730],[0,0,1.0000]])
+        Kteam =   np.array([[954.6327,0,629.4831],[0,968.4867,386.4730],[0,0,1.0000]],dtype=np.float32)
         Kinv = np.linalg.inv(Kteam)
 
         Pteam = np.array([[975.5068,0,628.0801],[0,993.6321,386.8233],[0, 0, 1.0000]])
         Pinv = np.linalg.inv(Pteam)
+
+        distcoeff = np.array([0.1505,-0.2453,0.0002,-0.0014]).reshape((4,1))
 
         if self.DepthFrameRaw.any() != 0:
             z = self.DepthFrameRaw[camY][camX]
@@ -447,8 +469,15 @@ class Camera():
  
             xyz1_w = np.matmul(invExtMtx,np.array([[xyz_c[0,0]],[xyz_c[1,0]],[xyz_c[2,0]],[1]]))
             
-            wpX = xyz1_w[0,0]
-            wpY = xyz1_w[1,0]
+            if(xyz1_w[0,0] < 0):
+                wpX = xyz1_w[0,0] * 100/95
+            else:
+                wpX = xyz1_w[0,0] * 100/94 + 2.15
+            
+            if(xyz1_w[1,0] >= 175):
+                wpY = xyz1_w[1,0] * 1.0922 - 14.4444
+            else:
+                wpY = xyz1_w[1,0] * 100/95 - 9.21
             # wpZ = xyz1_w[2,0]
             wpZ = 976-z #just use depth cam
 

@@ -50,6 +50,7 @@ class StateMachine():
             [0.0,             0.0,     0.0,      0.0,     0.0]]
 
         self.waypointGrips = 0 
+        self.comp1_start = True
         
 
     def set_next_state(self, state):
@@ -122,6 +123,16 @@ class StateMachine():
 
         if self.next_state == "tunePID":
             self.tunePID()
+#COMPETITION STATES
+        if self.next_state == "comp1":
+            self.comp1_start = True
+            self.comp1()
+        if self.next_state == "comp2":
+            self.comp2()
+        if self.next_state == "comp3":
+            self.comp3()
+        if self.next_state == "comp3":
+            self.comp4()
 
     """Functions run for each state"""
 
@@ -179,7 +190,7 @@ class StateMachine():
         else:
             self.next_state = "idle"
 
-    def execute_click2grab(self):
+    def execute_click2grab(self, moving_time=2.0):
         """!
         @brief      Go through all waypoints
         TODO: Implement this function to execute a waypoint plan
@@ -197,7 +208,7 @@ class StateMachine():
                 break
             #otherwise go to next pose
             # print(pose)
-            self.rxarm.set_positions(pose)
+            self.rxarm.set_positions(pose, moving_time)
             # if self.waypointGrips[e] == 1:
             #     self.rxarm.close_gripper()
             # else:
@@ -220,7 +231,7 @@ class StateMachine():
 
         """TODO Perform camera calibration routine here"""
         global ExtMtx
-        points3d = np.array([[-250, -25, 0],[250, -25, 0],[250, 275, 0],[-250, 275, 0]],dtype=np.float32)
+        points3d = np.array([[-250, -25, 0],[250, -25, 0],[250, 275, 0],[-250, 275, 0],[0, 175, 0],[0, 425, 0]],dtype=np.float32)
         points2d = np.array([[431,580],[905,581],[902,295],[434,295]],dtype=np.float32) #camera at home position, hardcode loc of april
 
         # for calpoints in points2d:
@@ -232,7 +243,7 @@ class StateMachine():
         self.status_message = "Calibration - Click on points"
         self.next_state = "idle"
         # self.current_state = "calibrate"
-        for pt_num in range(4):
+        for pt_num in range(6):
 
             print("waiting for point ", str(pt_num+1))
 
@@ -358,7 +369,7 @@ class StateMachine():
         index = 0
         # print("Blocks Located:",self.camera.block_detections)
         for block in self.camera.block_colors:
-            print(self.camera.block_colors[index]," block located at coord: ", self.camera.block_detections[index])
+            print(self.camera.block_colors[index]," block of size ",  self.camera.block_sizes[index], "located at coord: ", self.camera.block_detections[index])
             index = index+1
         index = 0
         print("---------end of list--------")
@@ -431,6 +442,22 @@ class StateMachine():
         z = self.camera.DepthFrameRaw[pixel_point[1, 0]][pixel_point[0, 0]]
         print("pixel_point: ", pixel_point)
         print("z = ", z)
+        self.current_state = "IDblocks"
+        self.status_message = "Detecting and printing blocks found"
+        print("-------Detected block list -----------")
+        
+        index = 0
+        # print("Blocks Located:",self.camera.block_detections)
+        for block in self.camera.block_colors:
+            print(self.camera.block_colors[index]," block located at coord: ", self.camera.block_detections[index])
+            index = index+1
+        index = 0
+        print("---------end of list--------")
+
+        # print("Detected Colors:", self.camera.block_colors)
+        # print("Detected Colors Hval:", self.camera.block_colors_H)
+
+        self.next_state="idle"
         xyz_c = z * np.matmul(Pinv, pixel_point)
         xyz_w = np.matmul(invExtMtx, np.array([[xyz_c[0, 0]], [xyz_c[1, 0]], [xyz_c[2,0]], [1]]))
         xyz_w[2,0] = 976 - z + 10
@@ -532,6 +559,365 @@ class StateMachine():
         for name in self.rxarm.joint_names:
             print("{0} gains: {1}".format(name, self.rxarm.get_motor_pid_params(name)))
 
+        self.next_state="idle"
+
+
+    
+    def moveBlock(self, x, y, z, gripper_state):
+
+        start_joint_state = self.rxarm.get_positions()
+        # print("start_state", start_joint_state)
+        # start_joint_state = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
+        zero_pose = np.array([0.0, 0.0 , 0.0, 0.0, 0.0, 0.0])
+        start_joint_state[1] = 0.0
+        start_joint_state[2] = 0.0
+        start_joint_state[3] = 0.0
+
+
+        final_pose = np.array([x, y, z, -np.pi/2, 0, 0])
+        print("final pose: ", final_pose)
+        final_joint_state = IK_pox(final_pose)
+
+        intermediate_pose = np.array([x, y, z+60, -np.pi/2, 0, 0])
+        # print("int pose: ", intermediate_pose)
+        intermediate_joint_state = IK_pox(intermediate_pose)
+
+        # print(intermediate_joint_state)
+        print(final_joint_state)
+
+        # hold = input()
+        hmode = 0
+        if(final_joint_state is None or intermediate_joint_state is None):
+            # Th1 can be solved with geometry
+            th1 = np.arctan2(y,x) - np.arctan2(175,0)
+            while th1 < -np.pi:
+                th1+=2*np.pi
+            while th1 > np.pi:
+                th1-=2*np.pi
+            stretch = 1.05
+            final_pose = np.array([x*stretch, y*stretch, z, 0.0, 0.0, th1])
+            intermediate_pose = np.array([x, y, z+80, 0.0, 0.0, th1])
+            # print("th1", th1)
+            final_joint_state = IK_pox(final_pose)
+            intermediate_joint_state = IK_pox(intermediate_pose)
+            hmode = 1
+            if(final_joint_state is None or intermediate_joint_state is None):
+                print("cannot find vert or horiz solution")
+                
+                return 0
+    
+
+        # if(gripper_state == "grab" or gripper_state == "close"):
+        #     self.waypoints = [intermediate_joint_state, final_joint_state]
+        # elif(gripper_state == "drop" or gripper_state == "open"):
+        #     self.waypoints = [intermediate_joint_state, final_joint_state]
+        self.waypoints = [intermediate_joint_state, final_joint_state]
+        if hmode == 1:
+            self.waypoints = [np.array([0.0, 0.0, 0.0 , 0.0, 0.0]),intermediate_joint_state, final_joint_state]
+        self.execute_click2grab()
+
+        if(gripper_state == "grab" or gripper_state == "close"):
+            self.rxarm.close_gripper()
+        elif(gripper_state == "drop" or gripper_state == "open"):
+            self.rxarm.open_gripper()
+        else:
+            print("Error! Incorret gripper state given ...")
+
+        # self.waypoints = [intermediate_joint_state, start_joint_state]
+        self.waypoints = [intermediate_joint_state]
+        if hmode == 1:
+            self.waypoints = [intermediate_joint_state, np.array([0.0, 0.0, 0.0 , 0.0, 0.0])]
+        self.execute_click2grab()
+        return 1
+
+
+    def comp1(self):
+        self.current_state = "comp1"
+        self.status_message = "Executing Competition Task 1"
+        snapshotContours = self.camera.block_contours.copy()
+        snapshotBlocks = self.camera.block_detections.copy()
+        #Look at every block contour
+
+        #If the contour area is greater than X, it is a large block
+        #If that large block is not in the "goal" region (check centroid coords) for large blocks, move it there
+
+         
+        #If the contour area is less than X, it is a small block
+        #If that small block is not in the "goal" region (check centroid coords) for small blocks, move it there 
+
+        #Run the function again
+        #If any blocks are detected outside proper goal regions, move them (re-execute fcn)
+        #Else print DONE, go "idle"
+
+        sortedthiscycle = 0
+        largeGoalX = 150
+        largeGoalY = -100
+
+        smallGoalX = -largeGoalX
+        smallGoalY = largeGoalY
+        tweak = 0
+
+        for e, block in enumerate(snapshotContours):
+            #for this block, decide if it is large or small
+            blocksizethresh = 1000
+            blockX, blockY, blockZ = snapshotBlocks[e]
+            
+            if blockX > 0:
+                blockX += tweak
+            if blockX < 0:
+                blockX -= tweak
+                
+            # blockY += 10
+            blockZ += 5
+            if(self.comp1_start == True):
+                self.dropZ_large = 55
+                self.dropZ_small = 40
+            
+            if cv2.contourArea(block) > blocksizethresh and blockY >= 0: #if the contour is a large block
+                #grab block, drop at large goal
+
+                flag = self.moveBlock(blockX,blockY,blockZ,'grab')
+
+                # print("flag")
+                if(flag == 0):
+                    self.next_state="idle"
+                    return
+
+                self.moveBlock(largeGoalX,largeGoalY,self.dropZ_large,'drop')
+                
+                #indicate that block was sorted
+                sortedthiscycle+=1
+                largeGoalX += 50
+                if largeGoalX > 386:
+                    largeGoalX = 150
+                    self.dropZ_large += 40
+
+
+            if cv2.contourArea(block) < blocksizethresh and blockY >= 0: #if the contour is a small block
+                #grab block, drop at small goal
+
+                flag = self.moveBlock(blockX,blockY,blockZ,'grab')
+
+                # print("flag")
+                if(flag == 0):
+                    self.next_state="idle"
+                    return
+                self.moveBlock(smallGoalX,smallGoalY,self.dropZ_small,'drop')
+
+                #indicate that block was sorted
+                sortedthiscycle+=1
+                smallGoalX -= 45
+                if smallGoalX < -386:
+                    smallGoalX = -150
+                    self.dropZ_small += 25
+                
+        if sortedthiscycle != 0:
+            self.next_state="comp1"
+            self.comp1_start = False
+
+        if sortedthiscycle ==0:
+            self.next_state="idle"
+            self.comp1_start = True
+
+    def comp2(self):
+        self.current_state = "comp2"
+        self.status_message = "Executing Competition Task 2"
+        sortedthiscycle = 0
+        snapshotContours = self.camera.block_contours.copy()
+        snapshotBlocks = self.camera.block_detections.copy()
+        #Goal: Stack blocks 3 high in seperate stacks, autonomously.
+
+        #Only consider contours that are still on the ground
+        #If no contours are ground height, we are done; set the next state to idle
+        
+        #Set initial stack locations 
+        smallStackX = -160
+        StackY = -50
+        largeStackX = -280
+
+        #Choose first block to stack (next block on list with ground Z height)
+
+        #Grab that block
+
+        #Move it to the X,Y of the stack, Z height + offset (set down block 2 on tower)
+
+        #increase Z offset by one block
+
+        #repeat (set down block 3 on tower)
+
+        #move to new stack location (an existing ground block?)
+
+
+        #run comp2 again. If no flag is raised to indicate stacking occured, go idle
+
+        # tweak = 10
+
+        #open loop
+        dropZlarge = 42
+        dropZsmall = 26
+
+        #closed loop drop height
+        self.camera.DepthFrameRaw
+        for e, block in enumerate(snapshotContours):
+                    #for this block, decide if it is large or small
+                    blocksizethresh = 1000
+                    blockX, blockY, blockZ = snapshotBlocks[e]
+                    
+                    # if blockX > 0:
+                    #     blockX += 20
+                    # if blockX < 0:
+                    #     blockX -= 15
+                        
+                    # blockY += 10
+                    blockZ += 5
+                    
+                    if cv2.contourArea(block) > blocksizethresh and blockY >= 0: #if the contour is a large block
+                        #grab block, drop at large goal
+
+                        flag = self.moveBlock(blockX,blockY,blockZ,'grab')
+
+                        # print("flag")
+                        if(flag == 0):
+                            self.next_state="idle"
+                            return
+
+                        self.moveBlock(largeStackX,StackY,dropZlarge,'drop')
+                        #drop next block one increment higher
+                        # dropZlarge += 38.5
+                        dropZlarge += 40
+
+                        #indicate that block was sorted
+                        sortedthiscycle+=1
+
+
+                    if cv2.contourArea(block) < blocksizethresh and blockY >= 0: #if the contour is a small block
+                        #grab block, drop at small goal
+
+                        flag = self.moveBlock(blockX,blockY,blockZ,'grab')
+
+                        # print("flag")
+                        if(flag == 0):
+                            self.next_state="idle"
+                            return
+                        self.moveBlock(smallStackX,StackY,dropZsmall,'drop')
+
+                        #drop the next one higher
+                        # dropZsmall += 25
+                        dropZsmall += 24
+
+                        #indicate that block was sorted
+                        sortedthiscycle+=1
+
+                        
+                    if sortedthiscycle != 0:
+                        self.next_state="comp2"
+
+                    if sortedthiscycle ==0:
+                        self.next_state="idle"
+                
+                # self.next_state="idle"
+    def comp3(self):
+        self.current_state = "comp3"
+        self.status_message = "Executing Competition Task 3"
+        blocksizethresh = 1000
+
+        color_positions = np.array([
+            [200, -25],
+            [200, 25],
+            [200, 75],
+            [200, 125],
+            [200, 175],
+            [200, 225]
+        ])
+
+        snapshotContours = self.camera.block_contours.copy()
+        snapshotBlocks = self.camera.block_detections.copy()
+        color_indices = self.camera.color_indices.copy()
+        # Look at every block contour
+
+        # Sort contours and blocks
+        # sorted_indices = self.sort_blocks(color_indices, snapshotContours, blocksizethresh)
+        sorted_indices = color_indices[:, 0].argsort()
+        color_indices = color_indices[sorted_indices]
+        snapshotContours = snapshotContours[sorted_indices]
+        snapshotBlocks = snapshotBlocks[sorted_indices]
+
+
+        sortedthiscycle = 0
+        largeGoalX = 200
+        largeGoalY = -25
+
+        smallGoalX = -largeGoalX
+        smallGoalY = largeGoalY
+        tweak = 20
+
+        for e, block in enumerate(snapshotContours):
+            # for this block, decide if it is large or small
+            blockX, blockY, blockZ = snapshotBlocks[e]
+
+            if blockX > 0:
+                blockX += tweak
+            if blockX < 0:
+                blockX -= tweak
+
+            # blockY += 10
+            blockZ += 5
+            self.dropZ_large = 75
+            self.dropZ_small = 40
+
+            if cv2.contourArea(block) > blocksizethresh:  # if the contour is a large block
+                # grab block, drop at large goal
+
+                flag = self.moveBlock(blockX, blockY, blockZ, 'grab')
+
+                # print("flag")
+                if (flag == 0):
+                    self.next_state = "idle"
+                    return
+
+                self.moveBlock(color_positions[color_indices[e]][0],
+                    color_positions[color_indices[e]][1], self.dropZ_large, 'drop')
+
+                # indicate that block was sorted
+                sortedthiscycle += 1
+                largeGoalY += 60
+                # if largeGoalX > 386:
+                #     largeGoalX = 150
+                #     self.dropZ_large += 25
+
+            if cv2.contourArea(block) < blocksizethresh:  # if the contour is a small block
+                # grab block, drop at small goal
+
+                flag = self.moveBlock(blockX, blockY, blockZ, 'grab')
+
+                # print("flag")
+                if (flag == 0):
+                    self.next_state = "idle"
+                    return
+
+                self.moveBlock(-color_positions[color_indices[e]][0],
+                               color_positions[color_indices[e]][1], self.dropZ_small, 'drop')
+
+                # indicate that block was sorted
+                sortedthiscycle += 1
+                smallGoalY += 40
+                # if smallGoalX < -386:
+                #     smallGoalX = -150
+                #     self.dropZ_small += 15
+
+        if sortedthiscycle != 0:
+            self.next_state = "comp1"
+            # self.comp1_start = False
+
+        if sortedthiscycle == 0:
+            self.next_state = "idle"
+            # self.comp1_start = True
+
+    def comp4(self):
+        self.current_state = "comp4"
+        self.status_message = "Executing Competition Task 4"
+        
+        
         self.next_state="idle"
 
 

@@ -136,6 +136,19 @@ class Gui(QMainWindow):
         self.ui.btnUser12.setText('PID Tune')
         self.ui.btnUser12.clicked.connect(partial(nxt_if_arm_init, 'tunePID'))
 
+        #competition tasks
+        self.ui.btnUser14.setText('Comp 1')
+        self.ui.btnUser14.clicked.connect(partial(nxt_if_arm_init, 'comp1'))
+
+        self.ui.btnUser15.setText('Comp 2')
+        self.ui.btnUser15.clicked.connect(partial(nxt_if_arm_init, 'comp2'))
+        
+        self.ui.btnUser16.setText('Comp 3')
+        self.ui.btnUser16.clicked.connect(partial(nxt_if_arm_init, 'comp3'))
+
+        self.ui.btnUser17.setText('Comp 4')
+        self.ui.btnUser17.clicked.connect(partial(nxt_if_arm_init, 'comp4'))
+
         # Sliders
         for sldr in self.joint_sliders:
             sldr.valueChanged.connect(self.sliderChange)
@@ -316,9 +329,16 @@ class Gui(QMainWindow):
 
             xyz1_w = np.matmul(invExtMtx,np.array([[xyz_c[0,0]],[xyz_c[1,0]],[xyz_c[2,0]],[1]]))
             
-            wpX = xyz1_w[0,0]
-            wpY = xyz1_w[1,0]
-            # wpZ = xyz1_w[2,0]
+            if(xyz1_w[0,0] < 0):
+                wpX = xyz1_w[0,0] * 100/95
+            else:
+                wpX = xyz1_w[0,0] * 100/94 + 2.15
+            
+            if(xyz1_w[1,0] >= 175):
+                wpY = xyz1_w[1,0] * 1.0922 - 14.4444
+            else:
+                wpY = xyz1_w[1,0] * 100/95 - 9.21
+                
             wpZ = 976-z #just use depth cam
             self.ui.rdoutMouseWorld.setText("(%.0f,%.0f,%.0f)" %
                                             (wpX,wpY,wpZ))
