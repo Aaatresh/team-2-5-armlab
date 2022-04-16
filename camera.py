@@ -54,6 +54,8 @@ class Camera():
         self.block_sizes = []
         self.block_color_nums = []
 
+        self.color_indices = np.array([])
+
     def processVideoFrame(self):
         """!
         @brief      Process a video frame
@@ -394,7 +396,10 @@ class Camera():
             contourcolor, meanHSVh = retrieve_area_color(rgbraw,contour,colors)
 
             annotateColor = annotate[contourcolor]
+
             annotateColor_index = annotate.keys().index(contourcolor)
+            color_indices.append(annotateColor_index)
+
             self.block_colors.append(contourcolor)
             self.block_colors_H.append(meanHSVh)
             self.block_sizes.append(cv2.contourArea(contour))
@@ -464,12 +469,19 @@ class Camera():
             
             uv1 = np.array([[camX],[camY],[1]])
      
-            xyz_c = z*np.matmul(Kinv,uv1)
+            xyz_c = z*np.matmul(Pinv,uv1)
  
             xyz1_w = np.matmul(invExtMtx,np.array([[xyz_c[0,0]],[xyz_c[1,0]],[xyz_c[2,0]],[1]]))
             
-            wpX = xyz1_w[0,0] * 100/95
-            wpY = xyz1_w[1,0]# * 10/9 - 19.4444
+            if(xyz1_w[0,0] < 0):
+                wpX = xyz1_w[0,0] * 100/95
+            else:
+                wpX = xyz1_w[0,0] * 100/94 + 2.15
+            
+            if(xyz1_w[1,0] >= 175):
+                wpY = xyz1_w[1,0] * 1.0922 - 14.4444
+            else:
+                wpY = xyz1_w[1,0] * 100/95 - 9.21
             # wpZ = xyz1_w[2,0]
             wpZ = 976-z #just use depth cam
 

@@ -177,10 +177,10 @@ class StateMachine():
             #otherwise go to next pose
             print(pose)
             self.rxarm.set_positions(pose)
-            # if self.waypointGrips[e] == 1:
-            #     self.rxarm.close_gripper()
-            # else:
-            #     self.rxarm.open_gripper()
+            if self.waypointGrips[e] == 1:
+                self.rxarm.close_gripper()
+            else:
+                self.rxarm.open_gripper()
             rospy.sleep(2.)
             
 
@@ -190,7 +190,7 @@ class StateMachine():
         else:
             self.next_state = "idle"
 
-    def execute_click2grab(self):
+    def execute_click2grab(self, moving_time=2.0):
         """!
         @brief      Go through all waypoints
         TODO: Implement this function to execute a waypoint plan
@@ -208,7 +208,7 @@ class StateMachine():
                 break
             #otherwise go to next pose
             # print(pose)
-            self.rxarm.set_positions(pose)
+            self.rxarm.set_positions(pose, moving_time)
             # if self.waypointGrips[e] == 1:
             #     self.rxarm.close_gripper()
             # else:
@@ -575,7 +575,7 @@ class StateMachine():
 
 
         final_pose = np.array([x, y, z, -np.pi/2, 0, 0])
-        # print("final pose: ", final_pose)
+        print("final pose: ", final_pose)
         final_joint_state = IK_pox(final_pose)
 
         intermediate_pose = np.array([x, y, z+60, -np.pi/2, 0, 0])
@@ -583,19 +583,37 @@ class StateMachine():
         intermediate_joint_state = IK_pox(intermediate_pose)
 
         # print(intermediate_joint_state)
-        # print(final_joint_state)
+        print(final_joint_state)
 
         # hold = input()
+        hmode = 0
         if(final_joint_state is None or intermediate_joint_state is None):
-            print("INVALID")
-            return 0
+            # Th1 can be solved with geometry
+            th1 = np.arctan2(y,x) - np.arctan2(175,0)
+            while th1 < -np.pi:
+                th1+=2*np.pi
+            while th1 > np.pi:
+                th1-=2*np.pi
+            stretch = 1.05
+            final_pose = np.array([x*stretch, y*stretch, z, 0.0, 0.0, th1])
+            intermediate_pose = np.array([x, y, z+80, 0.0, 0.0, th1])
+            # print("th1", th1)
+            final_joint_state = IK_pox(final_pose)
+            intermediate_joint_state = IK_pox(intermediate_pose)
+            hmode = 1
+            if(final_joint_state is None or intermediate_joint_state is None):
+                print("cannot find vert or horiz solution")
+                
+                return 0
+    
 
         # if(gripper_state == "grab" or gripper_state == "close"):
         #     self.waypoints = [intermediate_joint_state, final_joint_state]
         # elif(gripper_state == "drop" or gripper_state == "open"):
         #     self.waypoints = [intermediate_joint_state, final_joint_state]
-        
         self.waypoints = [intermediate_joint_state, final_joint_state]
+        if hmode == 1:
+            self.waypoints = [np.array([0.0, 0.0, 0.0 , 0.0, 0.0]),intermediate_joint_state, final_joint_state]
         self.execute_click2grab()
 
         if(gripper_state == "grab" or gripper_state == "close"):
@@ -607,6 +625,8 @@ class StateMachine():
 
         # self.waypoints = [intermediate_joint_state, start_joint_state]
         self.waypoints = [intermediate_joint_state]
+        if hmode == 1:
+            self.waypoints = [intermediate_joint_state, np.array([0.0, 0.0, 0.0 , 0.0, 0.0])]
         self.execute_click2grab()
         return 1
 
@@ -635,7 +655,7 @@ class StateMachine():
 
         smallGoalX = -largeGoalX
         smallGoalY = largeGoalY
-        tweak = 20
+        tweak = 0
 
         for e, block in enumerate(snapshotContours):
             #for this block, decide if it is large or small
@@ -650,7 +670,7 @@ class StateMachine():
             # blockY += 10
             blockZ += 5
             if(self.comp1_start == True):
-                self.dropZ_large = 75
+                self.dropZ_large = 55
                 self.dropZ_small = 40
             
             if cv2.contourArea(block) > blocksizethresh and blockY >= 0: #if the contour is a large block
@@ -670,7 +690,7 @@ class StateMachine():
                 largeGoalX += 50
                 if largeGoalX > 386:
                     largeGoalX = 150
-                    self.dropZ_large += 25
+                    self.dropZ_large += 40
 
 
             if cv2.contourArea(block) < blocksizethresh and blockY >= 0: #if the contour is a small block
@@ -686,10 +706,10 @@ class StateMachine():
 
                 #indicate that block was sorted
                 sortedthiscycle+=1
-                smallGoalX -= 25
+                smallGoalX -= 45
                 if smallGoalX < -386:
                     smallGoalX = -150
-                    self.dropZ_small += 15
+                    self.dropZ_small += 25
                 
         if sortedthiscycle != 0:
             self.next_state="comp1"
@@ -733,7 +753,7 @@ class StateMachine():
         # tweak = 10
 
         #open loop
-        dropZlarge = 40
+        dropZlarge = 42
         dropZsmall = 26
 
         #closed loop drop height
@@ -743,10 +763,10 @@ class StateMachine():
                     blocksizethresh = 1000
                     blockX, blockY, blockZ = snapshotBlocks[e]
                     
-                    if blockX > 0:
-                        blockX += 20
-                    if blockX < 0:
-                        blockX -= 15
+                    # if blockX > 0:
+                    #     blockX += 20
+                    # if blockX < 0:
+                    #     blockX -= 15
                         
                     # blockY += 10
                     blockZ += 5
@@ -783,7 +803,7 @@ class StateMachine():
 
                         #drop the next one higher
                         # dropZsmall += 25
-                        dropZsmall += 26
+                        dropZsmall += 24
 
                         #indicate that block was sorted
                         sortedthiscycle+=1
@@ -922,6 +942,7 @@ class StateMachine():
         
         
         self.next_state="idle"
+
 
 class StateMachineThread(QThread):
     """!
