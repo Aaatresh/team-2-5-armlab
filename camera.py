@@ -16,6 +16,7 @@ from sensor_msgs.msg import CameraInfo
 from apriltag_ros.msg import *
 from cv_bridge import CvBridge, CvBridgeError
 
+from collections import OrderedDict
 
 class Camera():
     """!
@@ -282,13 +283,22 @@ class Camera():
         img = 'armlab_opencv_examples-master/image_all_blocks.png'
         imgD = 'armlab_opencv_examples-master/depth_all_blocks.png'
 
-        annotate = OrderedDict({'red': (10, 10, 127),
-            'orange': (30, 75, 150),
-            'yellow': (30, 150, 200),
-            'green': (20, 60, 20),
-            'blue': (100, 50, 0),
-            'purple': (100, 40, 80),
-            'none': (0,0,0)})
+        # annotate = OrderedDict({'red': (10, 10, 127),
+        #     'orange': (30, 75, 150),
+        #     'yellow': (30, 150, 200),
+        #     'green': (20, 60, 20),
+        #     'blue': (100, 50, 0),
+        #     'purple': (100, 40, 80),
+        #     'none': (0,0,0)})
+        annotate = OrderedDict()
+
+        annotate['red'] = (10, 10, 127)
+        annotate['orange'] = (30, 75, 150)
+        annotate['yellow'] = (30, 150, 200)
+        annotate['green'] = (20, 60, 20)
+        annotate['blue'] = (100, 50, 0)
+        annotate['purple'] = (100, 40, 80)
+        annotate['none'] = (0,0,0)
 
 
         # img = 'armlab_opencv_examples-master/image_test.png'
@@ -389,14 +399,12 @@ class Camera():
         centroids = []
         centroidsCAMCOORD = []
         color_indices = []
-
+        
         del self.block_colors[:]
         del self.block_colors_H[:]
         for contour in viableContours:
             contourcolor, meanHSVh = retrieve_area_color(rgbraw,contour,colors)
-
             annotateColor = annotate[contourcolor]
-
             annotateColor_index = annotate.keys().index(contourcolor)
             color_indices.append(annotateColor_index)
 
@@ -422,8 +430,6 @@ class Camera():
             cv2.circle(rgb_image, (cX, cY), 3, (255, 255, 255), -1)
           
             centroidsCAMCOORD.append([cX,cY])
-
-            color_indices.append(annotateColor_index)
 
         # cv2.drawContours(rgb_image, viableContours, -1, (0,255,255), 3)
         self.block_detections = np.array(centroids)
