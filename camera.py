@@ -45,7 +45,9 @@ class Camera():
         self.tag_locations = [[-250, -25], [250, -25], [250, 275]]
         """ block info """
         self.block_contours = np.array([])
+        self.color_indices = np.array([])
         self.block_detections = np.array([])
+
         self.block_detectionsCAMCOORD = np.array([])
         self.block_colors = []
         self.block_colors_H = []
@@ -280,13 +282,13 @@ class Camera():
         img = 'armlab_opencv_examples-master/image_all_blocks.png'
         imgD = 'armlab_opencv_examples-master/depth_all_blocks.png'
 
-        annotate = {'red': (10, 10, 127),
+        annotate = OrderedDict({'red': (10, 10, 127),
             'orange': (30, 75, 150),
             'yellow': (30, 150, 200),
             'green': (20, 60, 20),
             'blue': (100, 50, 0),
             'purple': (100, 40, 80),
-            'none': (0,0,0)}
+            'none': (0,0,0)})
 
 
         # img = 'armlab_opencv_examples-master/image_test.png'
@@ -413,13 +415,15 @@ class Camera():
             M = cv2.moments(contour)
             cX = int(M["m10"] / M["m00"])
             cY = int(M["m01"] / M["m00"])
-            
+
             worldCoordCentroid = self.camXY2worldXYZ(cX,cY)
             centroids.append(worldCoordCentroid)
           
             cv2.circle(rgb_image, (cX, cY), 3, (255, 255, 255), -1)
           
             centroidsCAMCOORD.append([cX,cY])
+
+            color_indices.append(annotateColor_index)
 
         # cv2.drawContours(rgb_image, viableContours, -1, (0,255,255), 3)
         self.block_detections = np.array(centroids)

@@ -816,6 +816,29 @@ class StateMachine():
                         self.next_state="idle"
                 
                 # self.next_state="idle"
+
+    def sort_blocks(self, color_indices, snapshotContours, block_thresh):
+
+        large_blocks = []
+        small_blocks = []
+
+        sorted_indices = color_indices[:, 0].argsort()
+
+        for block_contour in snapshotContours:
+            if(cv2.contourArea(block_contour) > block_thresh):
+                large_blocks.append(block_contour)
+            else:
+                small_blocks.append(block_contour)
+
+        large_blocks = np.array(large_blocks)
+        large_block_sorted_ind = large_blocks[:, -1].argsort()
+        small_blocks = np.array(small_blocks)
+        small_block_sorted_ind = small_blocks[:, -1].argsort()
+
+        return large_block_sorted_ind + small_block_sorted_ind
+
+
+
     def comp3(self):
         self.current_state = "comp3"
         self.status_message = "Executing Competition Task 3"
