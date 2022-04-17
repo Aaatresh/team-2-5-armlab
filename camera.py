@@ -307,8 +307,8 @@ class Camera():
 
         # lower = 900
         # upper = 965
-        lower = 900
-        upper = 965
+        lower = 0
+        upper = 960
 
         # #depth "slice" we consider to mean a stack is two blocks tall
         # lower2 = 0
@@ -319,8 +319,6 @@ class Camera():
         # upper3 = 0
 
         depth_data = self.DepthFrameRaw.copy()
-
-
         """mask out arm & outside board"""
         scoot = 25
 
@@ -336,13 +334,8 @@ class Camera():
         cv2.rectangle(rgb_image, (573+scoot,117),(722+scoot,440), (255, 0, 0), 2)
 
         # cv2.rectangle(rgb_image, (575,414),(723,720), (255, 0, 0), 2)
-        # print(depth_data)
         thresh = cv2.bitwise_and(cv2.inRange(depth_data, lower, upper), mask)
         # self.BlockFrame = thresh.copy()
-        # print("depth data")
-        # print(depth_data)
-        # print("thresh")
-        # print(thresh)
 
         # depending on your version of OpenCV, the following line could be:
         # return_vals = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -351,9 +344,7 @@ class Camera():
 
         # contoursOG, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         _, contoursOG, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-        # cv2.drawContours(rgb_image, contoursOG, -1, (0,255,255), 3)
-
+        
         # we have the masked depth and area, now colorize the mask
         imgMasked_rgb = cv2.bitwise_and(rgbraw,rgbraw,mask=thresh)
         imgMasked_hsv = cv2.cvtColor(imgMasked_rgb,cv2.COLOR_BGR2HSV)
@@ -381,6 +372,7 @@ class Camera():
 
         topslice = 7 #half the thickness of the top surface depth slice for towers
         topSurfs_contoursOG = []
+
         for contour in contoursOG:
             topsliceXYZ_indices = []
 # ####################################    ##work in progress: only ID the top of a tower
@@ -396,22 +388,16 @@ class Camera():
 #             #find the top pixel in the contour
 #             maxZ = 976
 #             for i in range (0, len(contour)):
-#                 if depth_data[contour[i][0][1],contour[i][0][0]] < maxZ: # note that depth data uses [camY][camX] indexing, NOT xy!
+#                 if depth_data[contour[i][0][1],contour[i][0][0]] < maxZ and depth_data[contour[i][0][1],contour[i][0][0]] != 0:
+#                     # note that depth data uses [camY][camX] indexing, NOT xy!
 #                     maxZ = depth_data[contour[i][0][1],contour[i][0][0]] # note that depth data uses [camY][camX] indexing, NOT xy!
 
 #             #define depth slice within which we consider it part of the top surface
 #             maxZupperlim = maxZ + topslice
 #             maxZlowerlim = maxZ - topslice
-
 #             #index all contour pixels within that slice
 #             newTopContour = []
-#             # # print(contour)
-#             # maskREFINE = np.zeros_like(depth_data, dtype=np.uint8)
-#             # cv2.rectangle(maskREFINE, (200+scoot,117),(573+scoot,718), 255, cv2.FILLED)
-#             # cv2.rectangle(maskREFINE, (722+scoot,117),(1100+scoot,719), 255, cv2.FILLED)
-#             # cv2.rectangle(maskREFINE, (573+scoot,117),(722+scoot,440), 255, cv2.FILLED)
-#             # threshTop = cv2.bitwise_and(cv2.inRange(depth_data, maxZlowerlim, maxZupperlim), mask)
-#             # _, newTopContours, _ = cv2.findContours(threshTop, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
 #             for i in range (0, len(contour)):   # note that depth data uses [camY][camX] indexing, NOT xy!
 #                 if maxZlowerlim < depth_data[contour[i][0][1],contour[i][0][0]] < maxZupperlim:
 #                     # maskREFINE[contour[i][0][1],contour[i][0][0]] = 255
@@ -419,18 +405,7 @@ class Camera():
 #                         newTopContour = np.array([contour[i][0]])
 #                     else:
 #                         newTopContour = np.vstack((newTopContour, np.array([contour[i][0]])))
-#                     # # topsliceXYZ_indices.append(contour[i][0][0], contour[i][0][1],depth_data[contour[i][0][1],contour[i][0][0]])
-#                     # nextpix = (contour[i][0][0], contour[i][0][1],depth_data[contour[i][0][1],contour[i][0][0]]) # (xpixel, ypixel, z depth distance)
-#                     # # print(np.array([nextpix]))
-#                     # # print(topsliceXYZ_indices)
-#                     # if i == 0:
-#                     #     topsliceXYZ_indices = np.array([nextpix],dtype=int)
-#                     # else:
-#                     #     print(topsliceXYZ_indices)
-#                     #     print(np.array([nextpix],dtype=int))
-#                     #     topsliceXYZ_indices = np.vstack((topsliceXYZ_indices,np.array([nextpix],dtype=int)))
-
-
+                        
 #             #now we have the depth reading for the top pixel of the contour.
 #             #refine the contour to only include the coords within a thin slice of this height
 #             # threshTowerTop = cv2.bitwise_and(cv2.inRange(depth_data, maxZlowerlim, maxZupperlim), contour)
@@ -444,27 +419,39 @@ class Camera():
 #             # print(newTopContour)
 #             # print("new contour")
 #             # print(newTopContour)
-#             topSurfs_contoursOG.append(newTopContour)
-
+#             if(maxZ != 976):
+#                 topSurfs_contoursOG.append(newTopContour)
 # #now only run the rest of the detection refinement on top surfaces
 #         for contour in topSurfs_contoursOG:
 # ##################################
             # print("contour")
             # print(contour)
-            if cv2.contourArea(contour) > 200: #check contour area, filter out anything too small
+            # print("area: ", cv2.contourArea(contour))
+            # print(contour[0])
+            if cv2.contourArea(contour) > 200:# and cv2.contourArea(contour) < 7000: #check contour area, filter out anything too small
 
 
                 #make a rotated bounding rectangle (7b at https://docs.opencv.org/4.x/dd/d49/tutorial_py_contour_features.html)
                 rect = cv2.minAreaRect(contour)
                 box = cv2.boxPoints(rect)
                 box = np.int0(box)
-                if .75 < rect[1][1]/rect[1][0] < 1.25: #check squareness. if square enough, consider a block
+                if 0.75 < rect[1][1]/rect[1][0] < 1.25: #check squareness. if square enough, consider a block
 
                     cv2.drawContours(rgb_image,[box],0,(0,0,255),2)
 
                     # print(cv2.contourArea(contour))
                     # print(rect[1][1]/rect[1][0])
+                    # print("valid contour")
+                    # print(contour)
                     viableContours.append(contour)
+                # elif(0.75 < rect[1][0]/rect[1][1] < 1.70):
+                #     cv2.drawContours(rgb_image,[box],0,(0,0,255),2)
+
+                #     # print(cv2.contourArea(contour))
+                #     # print(rect[1][1]/rect[1][0])
+                #     # print("valid contour")
+                #     # print(contour)
+                #     viableContours.append(contour)
 
 
         centroids = []
@@ -494,7 +481,6 @@ class Camera():
             M = cv2.moments(contour)
             cX = int(M["m10"] / M["m00"])
             cY = int(M["m01"] / M["m00"])
-
             worldCoordCentroid = self.camXY2worldXYZ(cX,cY)
             centroids.append(worldCoordCentroid)
 
@@ -540,7 +526,7 @@ class Camera():
         Pinv = np.linalg.inv(Pteam)
 
         distcoeff = np.array([0.1505,-0.2453,0.0002,-0.0014]).reshape((4,1))
-
+        
         if self.DepthFrameRaw.any() != 0:
             z = self.DepthFrameRaw[camY][camX]
 
