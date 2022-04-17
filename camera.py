@@ -310,13 +310,13 @@ class Camera():
         lower = 900
         upper = 965
 
-        #depth "slice" we consider to mean a stack is two blocks tall
-        lower2 = 0
-        upper2 = 0
+        # #depth "slice" we consider to mean a stack is two blocks tall
+        # lower2 = 0
+        # upper2 = 0
 
-        #depth "slice" we consider to mean a stack is two blocks tall
-        lower3 = 0
-        upper3 = 0
+        # #depth "slice" we consider to mean a stack is two blocks tall
+        # lower3 = 0
+        # upper3 = 0
 
         depth_data = self.DepthFrameRaw.copy()      
 
@@ -376,13 +376,60 @@ class Camera():
         viableContours = []
         # print("start area check")
 
+        topslice = 7 #half the thickness of the top surface depth slice for towers
+        topSurfs_contoursOG = []
         for contour in contoursOG:
+
+#             topsliceXYZ_indices = []
+# ####################################    ##work in progress: only ID the top of a tower
+
+#             # #debugging how coords are stored in contour
+#             # print(contour[0][0])
+#             # print(contour[1][0])
+#             # print(contour[0][0][0])
+#             # print(contour[0][0][1])
+#             # print(contour[1][0][0])
+#             # print(contour[1][0][1])
+            
+#             #find the top pixel in the contour
+#             maxZ = 976
+#             for i in range (0, len(contour)):
+#                 if depth_data[contour[i][0][1],contour[i][0][0]] < 976: # note that depth data uses [camY][camX] indexing, NOT xy!
+#                     maxZ = depth_data[contour[i][0][1],contour[i][0][0]] # note that depth data uses [camY][camX] indexing, NOT xy!
+            
+#             #define depth slice within which we consider it part of the top surface
+#             maxZupperlim = maxZ + topslice
+#             maxZlowerlim = maxZ - topslice
+
+#             #index all contour pixels within that slice
+
+#             print(contour)
+#             for i in range (0, len(contour)):   # note that depth data uses [camY][camX] indexing, NOT xy!
+#                 if maxZlowerlim < depth_data[contour[i][0][1],contour[i][0][0]] < maxZupperlim:
+#                     # topsliceXYZ_indices.append(contour[i][0][0], contour[i][0][1],depth_data[contour[i][0][1],contour[i][0][0]])
+#                     nextpix = (contour[i][0][0], contour[i][0][1],depth_data[contour[i][0][1],contour[i][0][0]]) # (xpixel, ypixel, z depth distance)
+#                     print(nextpix)
+#                     if i == 0:
+#                         topsliceXYZ_indices = np.array(nextpix)
+#                     else:
+#                         topsliceXYZ_indices = np.vstack((topsliceXYZ_indices,np.array(nextpix)))
+
+            
+#             #now we have the depth reading for the top pixel of the contour.
+#             #refine the contour to only include the coords within a thin slice of this height
+#             threshTowerTop = cv2.bitwise_and(cv2.inRange(depth_data, maxZlowerlim, maxZupperlim), contour)
+#             _, newTopContour, _ = cv2.findContours(threshTowerTop, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+#             #add the refined contour to the list of top-surface-only contours
+#             # topSurfs_contoursOG.append([newTopContour])
+#             topSurfs_contoursOG = np.vstack((topSurfs_contoursOG,newTopContour))
+            
+# #now only run the rest of the detection refinement on top surfaces
+#         for contour in topSurfs_contoursOG:
+# ###################################
             if cv2.contourArea(contour) > 200: #check contour area, filter out anything too small
                 
-                ### NEW: SLICE THE TOP OF THE CONTOUR ONLY
                 
-
-                ###
                 #make a rotated bounding rectangle (7b at https://docs.opencv.org/4.x/dd/d49/tutorial_py_contour_features.html)
                 rect = cv2.minAreaRect(contour)
                 box = cv2.boxPoints(rect)
