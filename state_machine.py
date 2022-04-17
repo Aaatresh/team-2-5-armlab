@@ -1,6 +1,7 @@
 """!
 The state machine that implements the logic.
 """
+from matplotlib.cbook import Stack
 from numpy import True_
 from PyQt4.QtCore import (QThread, Qt, pyqtSignal, pyqtSlot, QTimer)
 import time
@@ -131,7 +132,7 @@ class StateMachine():
             self.comp2()
         if self.next_state == "comp3":
             self.comp3()
-        if self.next_state == "comp3":
+        if self.next_state == "comp4":
             self.comp4()
 
     """Functions run for each state"""
@@ -929,7 +930,7 @@ class StateMachine():
                 sortedthiscycle += 1
 
         if sortedthiscycle != 0:
-            self.next_state = "comp1"
+            self.next_state = "comp3"
 
         if sortedthiscycle == 0:
             self.next_state = "idle"
@@ -937,9 +938,96 @@ class StateMachine():
     def comp4(self):
         self.current_state = "comp4"
         self.status_message = "Executing Competition Task 4"
+        blocksizethresh = 1000
+        color_positions = np.array([
+            [100, -75],
+            [145, -75],
+            [190, -75],
+            [235, -75],
+            [280, -75],
+            [325, -75]
+        ], dtype=np.float32)
+
+        # grab snapshot of contours, make sure robot is out of view
+        snapshotContours = self.camera.block_contours.copy()
+        snapshotBlocks = self.camera.block_detections.copy()
+        color_indices = self.camera.color_indices.copy()
+        # Look at every block contour
+
+
+        # Sort contours and blocks by order of ROYGBV
+        # grab the indices in sorted order
+        sorted_indices = color_indices[:, 0].argsort()
+
+
+        print("sorted indices: ", sorted_indices)
+        print("color indices before: ", color_indices)
+
+        # rearrange snapshots in the new order
+        color_indices = color_indices[sorted_indices]
+        snapshotContours = snapshotContours[sorted_indices]
+        snapshotBlocks = snapshotBlocks[sorted_indices]
+
+        print("sorted indices: ", sorted_indices)
+        print("color_indices after: ", color_indices)
+
+        sortedthiscycle = 0
+
+        bigdrop = 35
+        smalldrop = 25
         
+        #Set initial stack locations 
+        smallStackX = -160
+        StackY = -50
+        largeStackX = -280
+
+        for e, block in enumerate(snapshotContours):
+            # for this block, decide if it is large or small
+            blockX, blockY, blockZ = snapshotBlocks[e]
+
+            blockZ += 5
+            self.dropZ_large = 35
+            self.dropZ_small = 25
+
+            if cv2.contourArea(block) > blocksizethresh:  # if the contour is a large block
+                # grab block, drop at large goal
+
+                flag = self.moveBlock(blockX, blockY, blockZ, 'grab')
+
+                if (flag == 0):
+                    self.next_state = "idle"
+                    return
+
+                print("place it here: ", largeStackX,StackY, bigdrop)
+
+                self.moveBlock(largeStackX, StackY, bigdrop, 'drop')
+
+                bigdrop += 40
+
+                # indicate that block was sorted
+                sortedthiscycle += 1
+
+            if cv2.contourArea(block) < blocksizethresh:  # if the contour is a small block
+                # grab block, drop at small goal
+
+                flag = self.moveBlock(blockX, blockY, blockZ, 'grab')
+
+                if (flag == 0):
+                    self.next_state = "idle"
+                    return
+
+                self.moveBlock(smallStackX, StackY, smalldrop, 'drop')
+                smalldrop += 26
+
+                # indicate that block was sorted
+                sortedthiscycle += 1
+
+        if sortedthiscycle != 0:
+            self.next_state = "comp4"
+
+        if sortedthiscycle == 0:
+            self.next_state = "idle"
         
-        self.next_state="idle"
 
 class StateMachineThread(QThread):
     """!
