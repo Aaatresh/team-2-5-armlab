@@ -653,7 +653,6 @@ class StateMachine():
         self.execute_click2grab()
         return 1
 
-
     def comp1(self):
         self.current_state = "comp1"
         self.status_message = "Executing Competition Task 1"
@@ -859,12 +858,78 @@ class StateMachine():
         return large_block_sorted_ind + small_block_sorted_ind
 
 
+    def destack(self):
+        # self.block_detections
+        # self.block_detectionsCAMCOORD
+      
+        destackdestinations = np.array([[150, -75],[215, -75],[280, -75],[340, -75],[150, 0],[215, 0],[280, 0],[340, 0],[150, 75]])
+        
+        ################### DESTACK PROCESS
+        sortedthiscycle = 0
+        for i in range(0,5):
+            centroids = self.camera.block_detectionsSTACKED[i].copy()
+            contours = self.camera.block_contoursSTACKED[i].copy()
+            for e, block in enumerate(contours):
+                print("destack",e)
+                print(block)
+                if np.size(centroids):
+                    
+                    blockX, blockY, blockZ = centroids[e]
+                    blockZ += 5
+
+                    self.dropZ_large = 35
+                    self.dropZ_small = 25
+                    blocksizethresh = 1000
+
+                    if cv2.contourArea(block) > blocksizethresh:  # if the contour is a large block
+                        # grab block, drop at large goal
+
+                        flag = self.moveBlock(blockX, blockY, blockZ, 'grab', block)
+
+                        if (flag == 0):
+                            self.next_state = "idle"
+                            return
+
+                        
+                        print(destackdestinations[sortedthiscycle][0])
+                        print(destackdestinations[sortedthiscycle][1])
+                        self.moveBlock(destackdestinations[sortedthiscycle][0],
+                            destackdestinations[sortedthiscycle][1], self.dropZ_large, 'drop', block)
+
+                        # indicate that block was sorted
+                        sortedthiscycle += 1
+
+                    if cv2.contourArea(block) < blocksizethresh:  # if the contour is a small block
+                        # grab block, drop at small goal
+                        blockZ += 10
+                        flag = self.moveBlock(blockX, blockY, blockZ, 'grab', block)
+
+                        if (flag == 0):
+                            self.next_state = "idle"
+                            return
+
+                        self.moveBlock(destackdestinations[sortedthiscycle][0],
+                            destackdestinations[sortedthiscycle][1], self.dropZ_small, 'drop', block)
+
+                        # indicate that block was sorted
+                        sortedthiscycle += 1
+
+        if sortedthiscycle != 0:
+            self.destack()
+
+        ###################
 
     def comp3(self):
         self.current_state = "comp3"
         self.status_message = "Executing Competition Task 3"
         blocksizethresh = 1000
 
+        print("about to daestack")
+        self.destack()
+
+
+        hold = input()
+        exit()
         # positions in negative half to order blocks
         # listed in order of ROYGBV
         color_positions = np.array([

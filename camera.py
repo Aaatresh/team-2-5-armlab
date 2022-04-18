@@ -57,6 +57,19 @@ class Camera():
 
         self.color_indices = np.array([])
 
+        self.block_colorsSTACKED = []
+        self.block_colors_HSTACKED = []
+        self.block_sizesSTACKED = []
+        self.block_detectionsSTACKED =[]
+        self.block_detectionsCAMCOORDSTACKED = np.array([])
+        self.block_contoursSTACKED = []
+        self.color_indicesSTACKED = np.array([])
+
+        # https://thispointer.com/how-to-create-and-initialize-a-list-of-lists-in-python/
+        for i in range(5):
+            self.block_contoursSTACKED.append([])
+            self.block_detectionsSTACKED.append([])
+
     def processVideoFrame(self):
         """!
         @brief      Process a video frame
@@ -309,7 +322,11 @@ class Camera():
         # upper = 965
         lower = 0
         upper = 960
+        # lower = 850
+        # upper = 875
 
+        halfslice = 4
+        block_height_slices = np.array([[825-halfslice, 825+halfslice],[867-halfslice, 867+halfslice],[879-halfslice, 879+halfslice],[905-halfslice, 905+halfslice],[930-halfslice, 930+halfslice]])
         # #depth "slice" we consider to mean a stack is two blocks tall
         # lower2 = 0
         # upper2 = 0
@@ -377,115 +394,40 @@ class Camera():
 
         for contour in contoursOG:
             topsliceXYZ_indices = []
-####################################    ##work in progress: only ID the top of a tower
-#https://stackoverflow.com/questions/44501723/how-to-merge-contours-in-opencv
-#ctr = np.array(list_of_pts).reshape((-1,1,2)).astype(np.int32)
+# ####################################    ##work in progress: only ID the top of a tower
+# #https://stackoverflow.com/questions/44501723/how-to-merge-contours-in-opencv
+# #ctr = np.array(list_of_pts).reshape((-1,1,2)).astype(np.int32)
 
-            #find the top pixel in the contour
-            maxZ = 976
-            for i in range (0, len(contour)):
-                if depth_data[contour[i][0][1],contour[i][0][0]] < maxZ and depth_data[contour[i][0][1],contour[i][0][0]] != 0:
-                    # note that depth data uses [camY][camX] indexing, NOT xy!
-                    maxZ = depth_data[contour[i][0][1],contour[i][0][0]] # note that depth data uses [camY][camX] indexing, NOT xy!
+#             #find the top pixel in the contour
+#             maxZ = 976
+#             for i in range (0, len(contour)):
+#                 if depth_data[contour[i][0][1],contour[i][0][0]] < maxZ and depth_data[contour[i][0][1],contour[i][0][0]] != 0:
+#                     # note that depth data uses [camY][camX] indexing, NOT xy!
+#                     maxZ = depth_data[contour[i][0][1],contour[i][0][0]] # note that depth data uses [camY][camX] indexing, NOT xy!
 
-            #define depth slice within which we consider it part of the top surface
-            maxZupperlim = maxZ + topslice
-            maxZlowerlim = maxZ - topslice
+#             #define depth slice within which we consider it part of the top surface
+#             maxZupperlim = maxZ + topslice
+#             maxZlowerlim = maxZ - topslice
             
-            ###NEW: try making a new thresh using the range around the top of the contour
-            threshTOPSURF = cv2.bitwise_and(cv2.inRange(depth_data, maxZlowerlim, maxZupperlim), mask)
-            # make new contours with this thresh
-            _, contoursAtTop, _ = cv2.findContours(threshTOPSURF, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            # print("contoursAtTop")
-            print("contour:",type(contour))
-            if(maxZ != 976):
-                for contourTop in contoursAtTop:
-                    print("contourTop",contourTop)
-                    # print("for loop pass flag")
-                    if cv2.contourArea(contourTop) > 200 and cv2.contourArea(contourTop) < 5000:# and cv2.contourArea(contour) < 7000: #check contour area, filter out anything too small
-                        #make a rotated bounding rectangle (7b at https://docs.opencv.org/4.x/dd/d49/tutorial_py_contour_features.html)
-                        rect = cv2.minAreaRect(contourTop)
-                        box = cv2.boxPoints(rect)
-                        box = np.int0(box)
-                        if 0.5 < rect[1][1]/rect[1][0] < 2.0: #check squareness. if square enough, consider a block
-                            cv2.drawContours(rgb_image,[box],0,(0,0,255),2)                        
-                            viableContours.append(contourTop)
-        ##################################
-
-        centroids = []
-        centroidsCAMCOORD = []
-        color_indices = []
-        del self.block_colors[:]
-        del self.block_colors_H[:]
-        for contour in viableContours:
-            contourcolor, meanHSVh = retrieve_area_color(rgbraw,contour,colors)
-            annotateColor = annotate[contourcolor]
-            annotateColor_index = annotate.keys().index(contourcolor)
-            color_indices.append(annotateColor_index)
-
-            self.block_colors.append(contourcolor)
-            self.block_colors_H.append(meanHSVh)
-            self.block_sizes.append(cv2.contourArea(contour))
-            x = 30
-            annotateColor = [annotateColor[0]+x,annotateColor[1]+x,annotateColor[2]+x]
-            # cv2.drawContours(rgb_image, contour, -1, annotateColor, 3)
-
-            # cv2.drawContours(rgbraw, [contour], -1, [0,255,255], thickness=2)
-            # cv2.drawContours(rgbraw, [contour], -1, annotateColor, thickness=2)
-
-            # https://pyimagesearch.com/2016/02/01/opencv-center-of-contour/
-            # find centroids
-            M = cv2.moments(contour)
-            cX = int(M["m10"] / M["m00"])
-            cY = int(M["m01"] / M["m00"])
-            worldCoordCentroid = self.camXY2worldXYZ(cX,cY)
-            centroids.append(worldCoordCentroid)
-
-            cv2.circle(rgb_image, (cX, cY), 3, (255, 255, 255), -1)
-
-            centroidsCAMCOORD.append([cX,cY])
-
-        # cv2.drawContours(rgb_image, viableContours, -1, (0,255,255), 3)
-        self.block_detections = np.array(centroids)
-        self.block_detectionsCAMCOORD = np.array(centroidsCAMCOORD)
-        self.block_contours = np.array(viableContours)
-        self.color_indices = np.array(color_indices).reshape(-1, 1)
-                
-#now only run the rest of the detection refinement on top surfaces
-
-# ###Uncomment below here to restore
-#         # for contour in topSurfs_contoursOG:
-#         for contour in contoursOG:
-# ##################################
-#             # print("contour")
-#             # print(contour)
-#             # print("area: ", cv2.contourArea(contour))
-#             # print(contour[0])
-#             if cv2.contourArea(contour) > 200 and cv2.contourArea(contour) < 5000:# and cv2.contourArea(contour) < 7000: #check contour area, filter out anything too small
-
-
-#                 #make a rotated bounding rectangle (7b at https://docs.opencv.org/4.x/dd/d49/tutorial_py_contour_features.html)
-#                 rect = cv2.minAreaRect(contour)
-#                 box = cv2.boxPoints(rect)
-#                 box = np.int0(box)
-#                 if 0.5 < rect[1][1]/rect[1][0] < 2.0: #check squareness. if square enough, consider a block
-
-#                     cv2.drawContours(rgb_image,[box],0,(0,0,255),2)
-#                     # print([box])
-#                     # print(cv2.contourArea(contour))
-#                     # print(rect[1][1]/rect[1][0])
-#                     # print("valid contour")
-#                     # print(contour)
-#                     viableContours.append(contour)
-#                 # elif(0.75 < rect[1][0]/rect[1][1] < 1.70):
-#                 #     cv2.drawContours(rgb_image,[box],0,(0,0,255),2)
-
-#                 #     # print(cv2.contourArea(contour))
-#                 #     # print(rect[1][1]/rect[1][0])
-#                 #     # print("valid contour")
-#                 #     # print(contour)
-#                 #     viableContours.append(contour)
-
+#             ###NEW: try making a new thresh using the range around the top of the contour
+#             threshTOPSURF = cv2.bitwise_and(cv2.inRange(depth_data, maxZlowerlim, maxZupperlim), mask)
+#             # make new contours with this thresh
+#             _, contoursAtTop, _ = cv2.findContours(threshTOPSURF, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+#             # print("contoursAtTop")
+#             print("contour:",type(contour))
+#             if(maxZ != 976):
+#                 for contourTop in contoursAtTop:
+#                     print("contourTop",contourTop)
+#                     # print("for loop pass flag")
+#                     if cv2.contourArea(contourTop) > 200 and cv2.contourArea(contourTop) < 5000:# and cv2.contourArea(contour) < 7000: #check contour area, filter out anything too small
+#                         #make a rotated bounding rectangle (7b at https://docs.opencv.org/4.x/dd/d49/tutorial_py_contour_features.html)
+#                         rect = cv2.minAreaRect(contourTop)
+#                         box = cv2.boxPoints(rect)
+#                         box = np.int0(box)
+#                         if 0.5 < rect[1][1]/rect[1][0] < 2.0: #check squareness. if square enough, consider a block
+#                             cv2.drawContours(rgb_image,[box],0,(0,0,255),2)                        
+#                             viableContours.append(contourTop)
+# #         ##################################
 
 #         centroids = []
 #         centroidsCAMCOORD = []
@@ -525,6 +467,191 @@ class Camera():
 #         self.block_detectionsCAMCOORD = np.array(centroidsCAMCOORD)
 #         self.block_contours = np.array(viableContours)
 #         self.color_indices = np.array(color_indices).reshape(-1, 1)
+                
+# #now only run the rest of the detection refinement on top surfaces
+
+###Uncomment below here to restore
+        # for contour in topSurfs_contoursOG:
+        for contour in contoursOG:
+##################################
+            # print("contour")
+            # print(contour)
+            # print("area: ", cv2.contourArea(contour))
+            # print(contour[0])
+            if cv2.contourArea(contour) > 200 and cv2.contourArea(contour) < 5000:# and cv2.contourArea(contour) < 7000: #check contour area, filter out anything too small
+
+
+                #make a rotated bounding rectangle (7b at https://docs.opencv.org/4.x/dd/d49/tutorial_py_contour_features.html)
+                rect = cv2.minAreaRect(contour)
+                box = cv2.boxPoints(rect)
+                box = np.int0(box)
+                if 0.5 < rect[1][1]/rect[1][0] < 2.0: #check squareness. if square enough, consider a block
+
+                    cv2.drawContours(rgb_image,[box],0,(0,0,255),2)
+                    # print([box])
+                    # print(cv2.contourArea(contour))
+                    # print(rect[1][1]/rect[1][0])
+                    # print("valid contour")
+                    # print(contour)
+                    viableContours.append(contour)
+                # elif(0.75 < rect[1][0]/rect[1][1] < 1.70):
+                #     cv2.drawContours(rgb_image,[box],0,(0,0,255),2)
+
+                #     # print(cv2.contourArea(contour))
+                #     # print(rect[1][1]/rect[1][0])
+                #     # print("valid contour")
+                #     # print(contour)
+                #     viableContours.append(contour)
+
+
+        centroids = []
+        centroidsCAMCOORD = []
+        color_indices = []
+        del self.block_colors[:]
+        del self.block_colors_H[:]
+        for contour in viableContours:
+            contourcolor, meanHSVh = retrieve_area_color(rgbraw,contour,colors)
+            annotateColor = annotate[contourcolor]
+            annotateColor_index = annotate.keys().index(contourcolor)
+            color_indices.append(annotateColor_index)
+
+            self.block_colors.append(contourcolor)
+            self.block_colors_H.append(meanHSVh)
+            self.block_sizes.append(cv2.contourArea(contour))
+            x = 30
+            annotateColor = [annotateColor[0]+x,annotateColor[1]+x,annotateColor[2]+x]
+            # cv2.drawContours(rgb_image, contour, -1, annotateColor, 3)
+
+            # cv2.drawContours(rgbraw, [contour], -1, [0,255,255], thickness=2)
+            # cv2.drawContours(rgbraw, [contour], -1, annotateColor, thickness=2)
+
+            # https://pyimagesearch.com/2016/02/01/opencv-center-of-contour/
+            # find centroids
+            M = cv2.moments(contour)
+            cX = int(M["m10"] / M["m00"])
+            cY = int(M["m01"] / M["m00"])
+            worldCoordCentroid = self.camXY2worldXYZ(cX,cY)
+            centroids.append(worldCoordCentroid)
+
+            cv2.circle(rgb_image, (cX, cY), 3, (255, 255, 255), -1)
+
+            centroidsCAMCOORD.append([cX,cY])
+
+        # cv2.drawContours(rgb_image, viableContours, -1, (0,255,255), 3)
+        self.block_detections = np.array(centroids)
+        self.block_detectionsCAMCOORD = np.array(centroidsCAMCOORD)
+        self.block_contours = np.array(viableContours)
+        self.color_indices = np.array(color_indices).reshape(-1, 1)
+
+
+
+
+
+
+
+        #################BLOCK HEIGHT SCANS################################
+        centroidsSTACKED = []
+        centroidsCAMCOORDSTACKED = []
+        color_indicesSTACKED = []
+        del self.block_colorsSTACKED[:]
+        del self.block_colors_HSTACKED[:]
+        for e, slice in enumerate(block_height_slices):
+            depth_data = self.DepthFrameRaw.copy()
+            """mask out arm & outside board"""
+            scoot = 25
+
+            mask = np.zeros_like(depth_data, dtype=np.uint8)
+            cv2.rectangle(mask, (200+scoot,117),(573+scoot,718), 255, cv2.FILLED)
+            cv2.rectangle(mask, (722+scoot,117),(1100+scoot,719), 255, cv2.FILLED)
+            cv2.rectangle(mask, (573+scoot,117),(722+scoot,420), 255, cv2.FILLED)
+
+            rgbraw = rgb_image.copy() #make a copy without markup
+
+            cv2.rectangle(rgb_image, (200+scoot,117),(573+scoot,718), (255, 0, 0), 2)
+            cv2.rectangle(rgb_image, (722+scoot,117),(1100+scoot,719), (255, 0, 0), 2)
+            cv2.rectangle(rgb_image, (573+scoot,117),(722+scoot,420), (255, 0, 0), 2)
+
+            # cv2.rectangle(rgb_image, (575,414),(723,720), (255, 0, 0), 2)
+            thresh = cv2.bitwise_and(cv2.inRange(depth_data, slice[0], slice[1]), mask)
+            # self.BlockFrame = thresh.copy()
+
+            # depending on your version of OpenCV, the following line could be:
+
+            _, contoursOG, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+
+            # we have the masked depth and area, now colorize the mask
+            imgMasked_rgb = cv2.bitwise_and(rgbraw,rgbraw,mask=thresh)
+            imgMasked_hsv = cv2.cvtColor(imgMasked_rgb,cv2.COLOR_BGR2HSV)
+
+            redLowHSV = np.array([0,0,0])
+            redHighHSV = np.array([179,255,255])
+            RedMask = cv2.inRange(imgMasked_hsv,redLowHSV,redHighHSV)
+            redsOnly = cv2.bitwise_and(imgMasked_rgb,imgMasked_rgb,mask=RedMask)
+
+            # ###Done identifying color ranges, now use contours to id pixel regions corresponding to blocks
+
+            # ###block pixel sets id-ed, now check their avg color to see which of our ranges it falls in
+
+            purpleLowHSV = np.array([0,0,0])
+            purpleHighHSV = np.array([179,255,255])
+            purple_hue = np.array([55,94])
+            purpleLowHSV[0] = purple_hue[0]
+            purpleHighHSV[0] = purple_hue[1]
+            purpleMask = cv2.inRange(imgMasked_hsv,purpleLowHSV,purpleHighHSV)
+            purpleOnly = cv2.bitwise_and(imgMasked_rgb,imgMasked_rgb,mask=purpleMask)
+            _, contours, _ = cv2.findContours(purpleMask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            viableContours = []
+
+            for contour in contoursOG:
+
+                if cv2.contourArea(contour) > 200 and cv2.contourArea(contour) < 5000:# and cv2.contourArea(contour) < 7000: #check contour area, filter out anything too small
+
+
+                    #make a rotated bounding rectangle (7b at https://docs.opencv.org/4.x/dd/d49/tutorial_py_contour_features.html)
+                    rect = cv2.minAreaRect(contour)
+                    box = cv2.boxPoints(rect)
+                    box = np.int0(box)
+                    if 0.5 < rect[1][1]/rect[1][0] < 2.0: #check squareness. if square enough, consider a block
+                        cv2.drawContours(rgb_image,[box],0,(0,0,255),2)
+                        viableContours.append(contour)
+
+            del self.block_colorsSTACKED[:]
+            del self.block_colors_HSTACKED[:]
+            for contour in viableContours:
+                contourcolor, meanHSVh = retrieve_area_color(rgbraw,contour,colors)
+                annotateColor = annotate[contourcolor]
+                annotateColor_index = annotate.keys().index(contourcolor)
+                color_indicesSTACKED.append(annotateColor_index)
+
+                self.block_colorsSTACKED.append(contourcolor)
+                self.block_colors_HSTACKED.append(meanHSVh)
+                self.block_sizesSTACKED.append(cv2.contourArea(contour))
+                x = 30
+                annotateColor = [annotateColor[0]+x,annotateColor[1]+x,annotateColor[2]+x]
+
+                # https://pyimagesearch.com/2016/02/01/opencv-center-of-contour/
+                # find centroids
+                M = cv2.moments(contour)
+                cX = int(M["m10"] / M["m00"])
+                cY = int(M["m01"] / M["m00"])
+                worldCoordCentroid = self.camXY2worldXYZ(cX,cY)
+                centroidsSTACKED.append(worldCoordCentroid)
+
+                cv2.circle(rgb_image, (cX, cY), 3, (255, 255, 255), -1)
+
+                centroidsCAMCOORDSTACKED.append([cX,cY])
+
+                
+
+            cv2.drawContours(rgb_image, viableContours, -1, (0,255,0), 3)
+            self.block_detectionsSTACKED[e] = np.array(centroidsSTACKED)
+            self.block_detectionsCAMCOORDSTACKED = np.array(centroidsCAMCOORDSTACKED)
+            self.block_contoursSTACKED[e] = np.array(viableContours)
+
+            self.color_indicesSTACKED = np.array(color_indicesSTACKED).reshape(-1, 1)
+
+
 
 
     def detectBlocksInDepthImage(self):
