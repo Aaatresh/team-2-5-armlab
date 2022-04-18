@@ -576,8 +576,8 @@ class StateMachine():
 
         rect = cv2.minAreaRect(block)
         phi = -rect[2]*np.pi/180
-        print("rect: ", rect)
-        print("phi: ", phi)
+        # print("rect: ", rect)
+        # print("phi: ", phi)
         start_joint_state = self.rxarm.get_positions()
         # print("start_state", start_joint_state)
         # start_joint_state = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
@@ -605,8 +605,8 @@ class StateMachine():
             intermediate_joint_state = IK_pox(intermediate_pose)
 
         # print(intermediate_joint_state)
-        print("final pose: ", final_pose)
-        print(final_joint_state)
+        # print("final pose: ", final_pose)
+        # print(final_joint_state)
 
         # hold = input()
         hmode = 0
@@ -873,6 +873,7 @@ class StateMachine():
             [190, -75],
             [235, -75],
             [280, -75],
+            [325, -75],
             [325, -75]
         ], dtype=np.float32)
 
@@ -918,11 +919,12 @@ class StateMachine():
                     self.next_state = "idle"
                     return
 
-                print("picked up block!")
+                # print("picked up block!")
 
-                print("place it here: ", color_positions[color_indices[e], 0][0],
-                    color_positions[color_indices[e], 1][0], self.dropZ_large)
-
+                # print("place it here: ", color_positions[color_indices[e], 0][0],
+                #     color_positions[color_indices[e], 1][0], self.dropZ_large)
+                print("color_indices[e]")
+                print(color_indices[e])
                 self.moveBlock(color_positions[color_indices[e], 0][0],
                     color_positions[color_indices[e], 1][0], self.dropZ_large, 'drop', block)
 
