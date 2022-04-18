@@ -9,7 +9,8 @@ import numpy as np
 import rospy
 from datetime import datetime
 import cv2 as cv2
-from configparser import ConfigParser
+# from configparser import ConfigParser
+from ConfigParser import ConfigParser
 
 from kinematics import IK_pox
 
@@ -571,7 +572,7 @@ class StateMachine():
     def moveBlock(self, x, y, z, gripper_state, block):
 
         rect = cv2.minAreaRect(block)
-        phi = rect[3]
+        phi = rect[2]*np.pi/180
         print("rect: ", rect)
         print("phi: ", phi)
         hold = input()
@@ -584,7 +585,7 @@ class StateMachine():
         start_joint_state[3] = 0.0
 
 
-        final_pose = np.array([x, y, z, -np.pi/2, 0, phi])
+        final_pose = np.array([x, y, z, -np.pi/2, 0, 0])
         final_joint_state = IK_pox(final_pose)
 
         intermediate_pose = np.array([x, y, z+60, -np.pi/2, 0, 0])
