@@ -428,14 +428,14 @@ class Camera():
             # print(contour)
             # print("area: ", cv2.contourArea(contour))
             # print(contour[0])
-            if cv2.contourArea(contour) > 200:# and cv2.contourArea(contour) < 7000: #check contour area, filter out anything too small
+            if cv2.contourArea(contour) > 200 and cv2.contourArea(contour) < 5000:# and cv2.contourArea(contour) < 7000: #check contour area, filter out anything too small
 
 
                 #make a rotated bounding rectangle (7b at https://docs.opencv.org/4.x/dd/d49/tutorial_py_contour_features.html)
                 rect = cv2.minAreaRect(contour)
                 box = cv2.boxPoints(rect)
                 box = np.int0(box)
-                if 0.75 < rect[1][1]/rect[1][0] < 1.25: #check squareness. if square enough, consider a block
+                if 0.5 < rect[1][1]/rect[1][0] < 2.0: #check squareness. if square enough, consider a block
 
                     cv2.drawContours(rgb_image,[box],0,(0,0,255),2)
 

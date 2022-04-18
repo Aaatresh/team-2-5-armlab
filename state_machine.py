@@ -10,7 +10,9 @@ import rospy
 from datetime import datetime
 import cv2 as cv2
 # from configparser import ConfigParser
-from ConfigParser import ConfigParser
+# from ConfigParser import ConfigParser
+
+from configparser import ConfigParser
 
 from kinematics import IK_pox
 
@@ -540,6 +542,7 @@ class StateMachine():
 
         config_object = ConfigParser()
         config_object.read("pid.ini")
+
         waist = config_object["waist"]
         shoulder = config_object["shoulder"]
         elbow = config_object["elbow"]
@@ -572,10 +575,9 @@ class StateMachine():
     def moveBlock(self, x, y, z, gripper_state, block):
 
         rect = cv2.minAreaRect(block)
-        phi = rect[2]*np.pi/180
+        phi = -rect[2]*np.pi/180
         print("rect: ", rect)
         print("phi: ", phi)
-        hold = input()
         start_joint_state = self.rxarm.get_positions()
         # print("start_state", start_joint_state)
         # start_joint_state = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
@@ -585,10 +587,10 @@ class StateMachine():
         start_joint_state[3] = 0.0
 
 
-        final_pose = np.array([x, y, z, -np.pi/2, 0, 0])
+        final_pose = np.array([x, y, z, -np.pi/2, 0, phi])
         final_joint_state = IK_pox(final_pose)
 
-        intermediate_pose = np.array([x, y, z+60, -np.pi/2, 0, 0])
+        intermediate_pose = np.array([x, y, z+60, -np.pi/2, 0, phi])
         intermediate_joint_state = IK_pox(intermediate_pose)
 
         if(gripper_state == "drop" or gripper_state == "open"):
@@ -678,6 +680,11 @@ class StateMachine():
         smallGoalY = largeGoalY
         # tweak = 20
 
+        if(self.comp1_start == True):
+            self.comp1_start = False
+            self.dropZ_large = 35
+            self.dropZ_small = 35
+
         for e, block in enumerate(snapshotContours):
             #for this block, decide if it is large or small
             blocksizethresh = 1000
@@ -690,10 +697,7 @@ class StateMachine():
 
             # blockY += 10
             blockZ += 10
-            if(self.comp1_start == True):
-                self.dropZ_large = 35
-                self.dropZ_small = 25
-
+            
             if cv2.contourArea(block) > blocksizethresh and blockY >= 0: #if the contour is a large block
                 #grab block, drop at large goal
 
@@ -704,14 +708,17 @@ class StateMachine():
                     self.next_state="idle"
                     return
 
+                # hold = input()
+
                 self.moveBlock(largeGoalX,largeGoalY,self.dropZ_large,'drop', block)
 
                 #indicate that block was sorted
                 sortedthiscycle+=1
                 largeGoalX += 50
-                if largeGoalX > 386:
+                if largeGoalX > 326:
+                # if largeGoalX > 226:
                     largeGoalX = 150
-                    self.dropZ_large += 25
+                    self.dropZ_large += 35
 
 
             if cv2.contourArea(block) < blocksizethresh and blockY >= 0: #if the contour is a small block
@@ -728,9 +735,10 @@ class StateMachine():
                 #indicate that block was sorted
                 sortedthiscycle+=1
                 smallGoalX -= 50
-                if smallGoalX < -386:
+                if smallGoalX < -326:
                     smallGoalX = -150
-                    self.dropZ_small += 15
+                    self.dropZ_small += 25
+                    print("resetting x to ", smallGoalX, " and z to ", self.dropZ_small)
 
         if sortedthiscycle != 0:
             self.next_state="comp1"
