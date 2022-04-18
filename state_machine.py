@@ -9,12 +9,15 @@ import numpy as np
 import rospy
 from datetime import datetime
 import cv2 as cv2
+# from configparser import ConfigParser
+# from ConfigParser import ConfigParser
+
 from configparser import ConfigParser
 
 from kinematics import IK_pox
 
 ExtMtx = np.eye(4)
-# ExtMtx = np.array([[1,0,0,41],[0,-1,0,175],[0,0,-1,978],[0,0,0,1]]); #BY HAND 
+# ExtMtx = np.array([[1,0,0,41],[0,-1,0,175],[0,0,-1,978],[0,0,0,1]]); #BY HAND
 class StateMachine():
     """!
     @brief      This class describes a state machine.
@@ -50,9 +53,9 @@ class StateMachine():
             [np.pi/2,         0.5,     0.3,      0.0,     0.0],
             [0.0,             0.0,     0.0,      0.0,     0.0]]
 
-        self.waypointGrips = 0 
+        self.waypointGrips = 0
         self.comp1_start = True
-        
+
 
     def set_next_state(self, state):
         """!
@@ -86,7 +89,7 @@ class StateMachine():
 
         if self.next_state == "calibrate":
             self.calibrate()
-            # self.status_message = "State: Calibrate - Waiting for input" 
+            # self.status_message = "State: Calibrate - Waiting for input"
 
         if self.next_state == "detect":
             self.detect()
@@ -109,7 +112,7 @@ class StateMachine():
 
         if self.next_state == "gripstateC":
             self.recposeGripC()
-        
+
         if self.next_state == "endteach":
             self.endteach()
 
@@ -183,9 +186,9 @@ class StateMachine():
             # else:
             #     self.rxarm.open_gripper()
             rospy.sleep(2.)
-            
 
-        
+
+
         if estopPRESSED == 1:
             self.next_state = "estop"
         else:
@@ -194,7 +197,7 @@ class StateMachine():
     def execute_click2grab(self, moving_time=2.0):
         """!
         @brief      Go through all waypoints
-        
+
         @param      moving_time     Chosen duration of a movement
         TODO: Implement this function to execute a waypoint plan
               Make sure you respect estop signal
@@ -217,8 +220,8 @@ class StateMachine():
             # else:
             #     self.rxarm.open_gripper()
             rospy.sleep(2.)
-            
-        
+
+
         if estopPRESSED == 1:
             self.next_state = "estop"
         else:
@@ -230,7 +233,7 @@ class StateMachine():
         """
         self.current_state = "calibrate"
         self.next_state = "calibrate"
-        self.status_message = "State: Calibrate - Waiting for input" 
+        self.status_message = "State: Calibrate - Waiting for input"
 
         """TODO Perform camera calibration routine here"""
         global ExtMtx
@@ -265,12 +268,12 @@ class StateMachine():
         # self.camera.intrinsic_matrix = np.array([[904.3176, 0, 644.014],[0, 904.8245, 360.7775],[0,0,1]],dtype=np.float32)
 
         self.camera.intrinsic_matrix = Kteam
-        
+
         distcoeff = np.array([0.1505,-0.2453,0.0002,-0.0014]).reshape((4,1)) # manual
         # distcoeff = np.array([0.5331,-0.4672,0.0003,-0.0011,0.4170])
         success,rot_vec,t_vec = cv2.solvePnP(points3d,points2d,self.camera.intrinsic_matrix,distcoeff,flags=cv2.SOLVEPNP_ITERATIVE)
         print(success)
-        # construct extrinsic matrix 
+        # construct extrinsic matrix
         RotMtx = cv2.Rodrigues(rot_vec)[0]
 
         #Brute force adjust depth
@@ -307,7 +310,7 @@ class StateMachine():
     def initteachmode(self):
         self.status_message = "TEACH MODE - new pose array started, torque off"
         self.current_state = "initteachmode"
-        self.rxarm.disable_torque() 
+        self.rxarm.disable_torque()
         #create array for poses
         self.poses = np.array([0,0,0,0,0,0]);
         self.gripcommand = 0;
@@ -318,8 +321,8 @@ class StateMachine():
     def teachmode(self):
         self.status_message = "waiting for teach pose"
         self.current_state = "idleteachmode"
-        self.rxarm.disable_torque() 
-        
+        self.rxarm.disable_torque()
+
 
         #format: [BASE ANGLE, SHOULDER ANGLE, ELBOW ANGLE, WRIST 1, WRIST 2, GRIP STATE]
     def recpose(self):
@@ -332,7 +335,7 @@ class StateMachine():
 
 
 
-    def recposeGripO(self): 
+    def recposeGripO(self):
         self.status_message = "Set Gripper State: Open"
         self.current_state = "gripstateO"
         self.gripcommand = 0
@@ -356,7 +359,7 @@ class StateMachine():
     def recital(self):
         self.current_state = "recital"
         self.status_message = "Replaying waypoints from Teach"
-        
+
         csvname = "Poses.csv"
         fetchedCSV = np.genfromtxt(csvname, delimiter=",")
 
@@ -368,12 +371,12 @@ class StateMachine():
         self.current_state = "IDblocks"
         self.status_message = "Detecting and printing blocks found"
         print("-------Detected block list -----------")
-        
+
         index = 0
         # print("Blocks Located:",self.camera.block_detections)
-        
+
         for block in self.camera.block_colors:
-            print(self.camera.block_colors[index]," block of size ",  self.camera.block_sizes[index], "located at coord: ", self.camera.block_detections[index], 
+            print(self.camera.block_colors[index]," block of size ",  self.camera.block_sizes[index], "located at coord: ", self.camera.block_detections[index],
             "color index: ", self.camera.color_indices[index])
             index = index+1
         index = 0
@@ -383,7 +386,7 @@ class StateMachine():
         # print("Detected Colors Hval:", self.camera.block_colors_H)
 
         self.next_state="idle"
-    
+
     def plan_and_execute(self, start_joint_position, final_joint_position, xyz_w, final_gripper_state="open"):
 
 
@@ -450,7 +453,7 @@ class StateMachine():
         self.current_state = "IDblocks"
         self.status_message = "Detecting and printing blocks found"
         print("-------Detected block list -----------")
-        
+
         index = 0
         # print("Blocks Located:",self.camera.block_detections)
         for block in self.camera.block_colors:
@@ -539,6 +542,7 @@ class StateMachine():
 
         config_object = ConfigParser()
         config_object.read("pid.ini")
+
         waist = config_object["waist"]
         shoulder = config_object["shoulder"]
         elbow = config_object["elbow"]
@@ -567,9 +571,13 @@ class StateMachine():
         self.next_state="idle"
 
 
-    
-    def moveBlock(self, x, y, z, gripper_state):
 
+    def moveBlock(self, x, y, z, gripper_state, block):
+
+        rect = cv2.minAreaRect(block)
+        phi = -rect[2]*np.pi/180
+        print("rect: ", rect)
+        print("phi: ", phi)
         start_joint_state = self.rxarm.get_positions()
         # print("start_state", start_joint_state)
         # start_joint_state = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
@@ -579,10 +587,10 @@ class StateMachine():
         start_joint_state[3] = 0.0
 
 
-        final_pose = np.array([x, y, z, -np.pi/2, 0, 0])
+        final_pose = np.array([x, y, z, -np.pi/2, 0, phi])
         final_joint_state = IK_pox(final_pose)
 
-        intermediate_pose = np.array([x, y, z+60, -np.pi/2, 0, 0])
+        intermediate_pose = np.array([x, y, z+60, -np.pi/2, 0, phi])
         intermediate_joint_state = IK_pox(intermediate_pose)
 
         if(gripper_state == "drop" or gripper_state == "open"):
@@ -609,6 +617,7 @@ class StateMachine():
             while th1 > np.pi:
                 th1-=2*np.pi
             stretch = 1.05
+            # stretch=1
             final_pose = np.array([x*stretch, y*stretch, z, 0.0, 0.0, th1])
             intermediate_pose = np.array([x, y, z+80, 0.0, 0.0, th1])
             # print("th1", th1)
@@ -617,9 +626,9 @@ class StateMachine():
             hmode = 1
             if(final_joint_state is None or intermediate_joint_state is None):
                 print("cannot find vert or horiz solution")
-                
+
                 return 0
-    
+
 
         # if(gripper_state == "grab" or gripper_state == "close"):
         #     self.waypoints = [intermediate_joint_state, final_joint_state]
@@ -655,9 +664,9 @@ class StateMachine():
         #If the contour area is greater than X, it is a large block
         #If that large block is not in the "goal" region (check centroid coords) for large blocks, move it there
 
-         
+
         #If the contour area is less than X, it is a small block
-        #If that small block is not in the "goal" region (check centroid coords) for small blocks, move it there 
+        #If that small block is not in the "goal" region (check centroid coords) for small blocks, move it there
 
         #Run the function again
         #If any blocks are detected outside proper goal regions, move them (re-execute fcn)
@@ -671,60 +680,66 @@ class StateMachine():
         smallGoalY = largeGoalY
         # tweak = 20
 
+        if(self.comp1_start == True):
+            self.comp1_start = False
+            self.dropZ_large = 35
+            self.dropZ_small = 35
+
         for e, block in enumerate(snapshotContours):
             #for this block, decide if it is large or small
             blocksizethresh = 1000
             blockX, blockY, blockZ = snapshotBlocks[e]
-            
+
             # if blockX > 0:
             #     blockX += tweak
             # if blockX < 0:
             #     blockX -= tweak
-                
+
             # blockY += 10
             blockZ += 10
-            if(self.comp1_start == True):
-                self.dropZ_large = 35
-                self.dropZ_small = 25
             
             if cv2.contourArea(block) > blocksizethresh and blockY >= 0: #if the contour is a large block
                 #grab block, drop at large goal
 
-                flag = self.moveBlock(blockX,blockY,blockZ,'grab')
+                flag = self.moveBlock(blockX,blockY,blockZ,'grab', block)
 
                 # print("flag")
                 if(flag == 0):
                     self.next_state="idle"
                     return
 
-                self.moveBlock(largeGoalX,largeGoalY,self.dropZ_large,'drop')
-                
+                # hold = input()
+
+                self.moveBlock(largeGoalX,largeGoalY,self.dropZ_large,'drop', block)
+
                 #indicate that block was sorted
                 sortedthiscycle+=1
                 largeGoalX += 50
-                if largeGoalX > 386:
+                if largeGoalX > 326:
+                # if largeGoalX > 226:
                     largeGoalX = 150
-                    self.dropZ_large += 25
+                    self.dropZ_large += 35
 
 
             if cv2.contourArea(block) < blocksizethresh and blockY >= 0: #if the contour is a small block
                 #grab block, drop at small goal
 
-                flag = self.moveBlock(blockX,blockY,blockZ,'grab')
+                flag = self.moveBlock(blockX,blockY,blockZ,'grab', block)
 
                 # print("flag")
                 if(flag == 0):
                     self.next_state="idle"
                     return
-                self.moveBlock(smallGoalX,smallGoalY,self.dropZ_small,'drop')
+                self.moveBlock(smallGoalX,smallGoalY,self.dropZ_small,'drop', block)
 
                 #indicate that block was sorted
                 sortedthiscycle+=1
                 smallGoalX -= 50
-                if smallGoalX < -386:
+                if smallGoalX < -326:
                     smallGoalX = -150
-                    self.dropZ_small += 15
-                
+                    self.dropZ_small += 25
+                    print("resetting x to ", smallGoalX, " and z to ", self.dropZ_small)
+
         if sortedthiscycle != 0:
             self.next_state="comp1"
             self.comp1_start = False
@@ -744,8 +759,8 @@ class StateMachine():
 
         #Only consider contours that are still on the ground
         #If no contours are ground height, we are done; set the next state to idle
-        
-        #Set initial stack locations 
+
+        #Set initial stack locations
         smallStackX = -160
         StackY = -50
         largeStackX = -280
@@ -775,24 +790,24 @@ class StateMachine():
                     #for this block, decide if it is large or small
                     blocksizethresh = 1000
                     blockX, blockY, blockZ = snapshotBlocks[e]
-                    
+
                     # if blockX > 0:
                     #     blockX += 20
                     # if blockX < 0:
                     #     blockX -= 15
-                        
+
                     blockZ += 5
-                    
+
                     if cv2.contourArea(block) > blocksizethresh and blockY >= 0: #if the contour is a large block
                         #grab block, drop at large goal
 
-                        flag = self.moveBlock(blockX,blockY,blockZ,'grab')
+                        flag = self.moveBlock(blockX,blockY,blockZ,'grab', block)
 
                         if(flag == 0):
                             self.next_state="idle"
                             return
 
-                        self.moveBlock(largeStackX,StackY,dropZlarge,'drop')
+                        self.moveBlock(largeStackX,StackY,dropZlarge,'drop', block)
                         #drop next block one increment higher
                         dropZlarge += 40
 
@@ -803,12 +818,12 @@ class StateMachine():
                     if cv2.contourArea(block) < blocksizethresh and blockY >= 0: #if the contour is a small block
                         #grab block, drop at small goal
 
-                        flag = self.moveBlock(blockX,blockY,blockZ,'grab')
+                        flag = self.moveBlock(blockX,blockY,blockZ,'grab', block)
 
                         if(flag == 0):
                             self.next_state="idle"
                             return
-                        self.moveBlock(smallStackX,StackY,dropZsmall,'drop')
+                        self.moveBlock(smallStackX,StackY,dropZsmall,'drop', block)
 
                         #drop the next one higher
                         dropZsmall += 26
@@ -816,7 +831,7 @@ class StateMachine():
                         #indicate that block was sorted
                         sortedthiscycle+=1
 
-                        
+
                     if sortedthiscycle != 0:
                         self.next_state="comp2"
 
@@ -897,7 +912,7 @@ class StateMachine():
             if cv2.contourArea(block) > blocksizethresh:  # if the contour is a large block
                 # grab block, drop at large goal
 
-                flag = self.moveBlock(blockX, blockY, blockZ, 'grab')
+                flag = self.moveBlock(blockX, blockY, blockZ, 'grab', block)
 
                 if (flag == 0):
                     self.next_state = "idle"
@@ -905,11 +920,11 @@ class StateMachine():
 
                 print("picked up block!")
 
-                print("place it here: ", color_positions[color_indices[e], 0],
-                    color_positions[color_indices[e], 1], self.dropZ_large)
+                print("place it here: ", color_positions[color_indices[e], 0][0],
+                    color_positions[color_indices[e], 1][0], self.dropZ_large)
 
                 self.moveBlock(color_positions[color_indices[e], 0][0],
-                    color_positions[color_indices[e], 1][0], self.dropZ_large, 'drop')
+                    color_positions[color_indices[e], 1][0], self.dropZ_large, 'drop', block)
 
                 # indicate that block was sorted
                 sortedthiscycle += 1
@@ -917,14 +932,14 @@ class StateMachine():
             if cv2.contourArea(block) < blocksizethresh:  # if the contour is a small block
                 # grab block, drop at small goal
 
-                flag = self.moveBlock(blockX, blockY, blockZ, 'grab')
+                flag = self.moveBlock(blockX, blockY, blockZ, 'grab', block)
 
                 if (flag == 0):
                     self.next_state = "idle"
                     return
 
                 self.moveBlock(-color_positions[color_indices[e], 0][0],
-                    color_positions[color_indices[e], 1][0], self.dropZ_small, 'drop')
+                    color_positions[color_indices[e], 1][0], self.dropZ_small, 'drop', block)
 
                 # indicate that block was sorted
                 sortedthiscycle += 1
@@ -975,8 +990,8 @@ class StateMachine():
 
         bigdrop = 35
         smalldrop = 25
-        
-        #Set initial stack locations 
+
+        #Set initial stack locations
         smallStackX = -160
         StackY = -50
         largeStackX = -280
@@ -992,7 +1007,7 @@ class StateMachine():
             if cv2.contourArea(block) > blocksizethresh:  # if the contour is a large block
                 # grab block, drop at large goal
 
-                flag = self.moveBlock(blockX, blockY, blockZ, 'grab')
+                flag = self.moveBlock(blockX, blockY, blockZ, 'grab', block)
 
                 if (flag == 0):
                     self.next_state = "idle"
@@ -1000,7 +1015,7 @@ class StateMachine():
 
                 print("place it here: ", largeStackX,StackY, bigdrop)
 
-                self.moveBlock(largeStackX, StackY, bigdrop, 'drop')
+                self.moveBlock(largeStackX, StackY, bigdrop, 'drop', block)
 
                 bigdrop += 40
 
@@ -1010,13 +1025,13 @@ class StateMachine():
             if cv2.contourArea(block) < blocksizethresh:  # if the contour is a small block
                 # grab block, drop at small goal
 
-                flag = self.moveBlock(blockX, blockY, blockZ, 'grab')
+                flag = self.moveBlock(blockX, blockY, blockZ, 'grab', block)
 
                 if (flag == 0):
                     self.next_state = "idle"
                     return
 
-                self.moveBlock(smallStackX, StackY, smalldrop, 'drop')
+                self.moveBlock(smallStackX, StackY, smalldrop, 'drop', block)
                 smalldrop += 26
 
                 # indicate that block was sorted
@@ -1027,7 +1042,7 @@ class StateMachine():
 
         if sortedthiscycle == 0:
             self.next_state = "idle"
-        
+
 
 class StateMachineThread(QThread):
     """!
