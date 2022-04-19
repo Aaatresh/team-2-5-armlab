@@ -1,6 +1,7 @@
 """!
 The state machine that implements the logic.
 """
+from cv2 import sqrt
 from matplotlib.cbook import Stack
 from numpy import True_
 from PyQt4.QtCore import (QThread, Qt, pyqtSignal, pyqtSlot, QTimer)
@@ -574,6 +575,9 @@ class StateMachine():
 
     def moveBlock(self, x, y, z, gripper_state, block):
 
+        dist = (x**2 + y**2)**0.5
+        # if dist > 255:
+        #     z += dist/40
         rect = cv2.minAreaRect(block)
         phi = -rect[2]*np.pi/180
         # print("rect: ", rect)
@@ -605,8 +609,8 @@ class StateMachine():
             intermediate_joint_state = IK_pox(intermediate_pose)
 
         # print(intermediate_joint_state)
-        # print("final pose: ", final_pose)
-        # print(final_joint_state)
+        print("final pose: ", final_pose)
+        print(final_joint_state)
 
         # hold = input()
         hmode = 0
@@ -616,10 +620,10 @@ class StateMachine():
                 th1+=2*np.pi
             while th1 > np.pi:
                 th1-=2*np.pi
-            stretch = 1.05
+            stretch = 1.10
             # stretch=1
             final_pose = np.array([x*stretch, y*stretch, z, 0.0, 0.0, th1])
-            intermediate_pose = np.array([x, y, z+880, 0.0, 0.0, th1])
+            intermediate_pose = np.array([x*0.8, y*0.8, z, 0.0, 0.0, th1])
             # print("th1", th1)
             final_joint_state = IK_pox(final_pose)
             intermediate_joint_state = IK_pox(intermediate_pose)
@@ -628,15 +632,21 @@ class StateMachine():
                 print("cannot find vert or horiz solution")
 
                 return 0
-
+        print("HORZ final pose: ", final_pose)
+        print(final_joint_state)
 
         # if(gripper_state == "grab" or gripper_state == "close"):
         #     self.waypoints = [intermediate_joint_state, final_joint_state]
         # elif(gripper_state == "drop" or gripper_state == "open"):
         #     self.waypoints = [intermediate_joint_state, final_joint_state]
-        self.waypoints = [intermediate_joint_state, final_joint_state]
+        self.waypoints = [intermediate_joint_state]#, final_joint_state]
         if hmode == 1:
-            self.waypoints = [np.array([0.0, 0.0, 0.0 , 0.0, 0.0]),intermediate_joint_state, final_joint_state]
+            self.waypoints = [np.array([0.0, 0.0, 0.0 , 0.0, 0.0]),intermediate_joint_state]#, final_joint_state]
+        self.execute_click2grab()
+
+        rospy.sleep(0.5)
+
+        self.waypoints = [final_joint_state]
         self.execute_click2grab()
 
         if(gripper_state == "grab" or gripper_state == "close"):
@@ -654,6 +664,7 @@ class StateMachine():
         return 1
 
     def comp1(self):
+        largeGoalX, largeGoalY, self.dropZ_large, smallGoalX, smallGoalY, self.dropZ_small = self.comp1_destack()
         self.current_state = "comp1"
         self.status_message = "Executing Competition Task 1"
         snapshotContours = self.camera.block_contours.copy()
@@ -672,15 +683,9 @@ class StateMachine():
         #Else print DONE, go "idle"
 
         sortedthiscycle = 0
-        largeGoalX = 150
-        largeGoalY = -100
-
-        smallGoalX = -largeGoalX
-        smallGoalY = largeGoalY
         # tweak = 20
 
-        if(self.comp1_start == True):
-            self.comp1_start = False
+        if(self.comp1_start == False):
             self.dropZ_large = 35
             self.dropZ_small = 35
 
@@ -746,6 +751,85 @@ class StateMachine():
         if sortedthiscycle ==0:
             self.next_state="idle"
             self.comp1_start = True
+
+    def comp1_destack(self):
+        # self.block_detections
+        # self.block_detectionsCAMCOORD
+      
+        sortedthiscycle = 0
+        largeGoalX = 150
+        largeGoalY = -100
+
+        smallGoalX = -largeGoalX
+        smallGoalY = largeGoalY
+        ################### DESTACK PROCESS
+        sortedthiscycle = 0
+        for i in range(0,5):
+            centroids = self.camera.block_detectionsSTACKED[i].copy()
+            contours = self.camera.block_contoursSTACKED[i].copy()
+            for e, block in enumerate(contours):
+                # print("destack",e)
+                # print(block)
+                # print(self.camera.color_indicesSTACKED[e])
+                if np.size(centroids): # and self.camera.color_indicesSTACKED[e] != 6:
+                    
+                    blockX, blockY, blockZ = centroids[e]
+                    blockZ += 5
+
+                    self.dropZ_large = 35
+                    self.dropZ_small = 35
+                    blocksizethresh = 1000
+
+                    if cv2.contourArea(block) > blocksizethresh and blockY > 0:  # if the contour is a large block
+                        # grab block, drop at large goal
+
+                        flag = self.moveBlock(blockX, blockY, blockZ, 'grab', block)
+
+                        if (flag == 0):
+                            self.next_state = "idle"
+                            return
+
+                        
+                        # print(destackdestinations[sortedthiscycle][0])
+                        # print(destackdestinations[sortedthiscycle][1])
+                        self.moveBlock(largeGoalX, largeGoalY, self.dropZ_large, 'drop', block)
+
+                        #indicate that block was sorted
+                        sortedthiscycle+=1
+                        largeGoalX += 50
+                        if largeGoalX > 326:
+                        # if largeGoalX > 226:
+                            largeGoalX = 150
+                            self.dropZ_large += 35
+
+                    if cv2.contourArea(block) < blocksizethresh  and blockY > 0:  # if the contour is a small block
+                        # grab block, drop at small goal
+                        blockZ += 10
+                        flag = self.moveBlock(blockX, blockY, blockZ, 'grab', block)
+
+                        if (flag == 0):
+                            self.next_state = "idle"
+                            return
+
+                        self.moveBlock(smallGoalX, smallGoalY, self.dropZ_small, 'drop', block)
+
+                        #indicate that block was sorted
+                        sortedthiscycle+=1
+                        smallGoalX -= 50
+                        if smallGoalX < -326:
+                        # if largeGoalX > 226:
+                            smallGoalX = -150
+                            self.dropZ_small += 35
+
+        if sortedthiscycle != 0:
+            self.rollover = sortedthiscycle
+            return largeGoalX, largeGoalY, self.dropZ_large, smallGoalX, smallGoalY, self.dropZ_small
+        if sortedthiscycle == 0:
+            self.rxarm.sleep()
+            rospy.sleep(4) 
+            return largeGoalX, largeGoalY, self.dropZ_large, smallGoalX, smallGoalY, self.dropZ_small
+
+        ###################
 
 
     def comp2(self):
@@ -939,13 +1023,13 @@ class StateMachine():
 
         Xscoot = 5
         color_positions = np.array([
-            [100+Xscoot, -75],
-            [145+Xscoot, -75],
-            [190+Xscoot, -75],
-            [235+Xscoot, -75],
-            [280+Xscoot, -75],
-            [325+Xscoot, -75],
-            [325+Xscoot, -75]
+            [100+Xscoot, -100],
+            [145+Xscoot, -100],
+            [190+Xscoot, -100],
+            [235+Xscoot, -100],
+            [280+Xscoot, -100],
+            [325+Xscoot, -100],
+            [325+Xscoot, -100]
         ], dtype=np.float32)
 
         # grab snapshot of contours, make sure robot is out of view
@@ -1001,7 +1085,7 @@ class StateMachine():
                 print("color_indices[e]")
                 print(color_indices[e])
                 self.moveBlock(-color_positions[color_indices[e], 0][0],
-                    color_positions[color_indices[e], 1][0]+50, self.dropZ_large, 'drop', block)
+                    color_positions[color_indices[e], 1][0]+75, self.dropZ_large, 'drop', block)
 
                 # indicate that block was sorted
                 sortedthiscycle += 1
