@@ -32,7 +32,7 @@ if __name__ == '__main__':
     screws = np.array([xi1, xi2, xi3, xi4, xi5])
     gst0 = np.array([[1.0, 0.0, 0.0, 0.0],[0.0, 1.0, 0.0, 424.15],[0.0, 0.0, 1.0, 303.91],[0.0, 0.0, 0.0, 1]])
     ### Add arm configurations to test here
-    fk_angles = [[0.762, 1.009, 0.239, 0.756, -0.0215]]
+    fk_angles = [[-1.03907226,  0.91926288,  0.03077512,  0.87621956,  0.6158568 ]]
 
     print('Test FK')
     fk_poses = []
@@ -48,9 +48,11 @@ if __name__ == '__main__':
     # print(th_d)
 
     print('Test IK 2')
-    pos = np.array([-339, 325, 22, 0, 0, 0.812])
+    pos = np.array([322.46, 268.29, 31, 0, 0, -0.8768])
     th_d = IK_pox(pos)
     print('th_d = ')
     print(th_d)
 
+    print('back through FK')
+    pose = get_pose_from_T(FK_pox(th_d, gst0, screws))
     
