@@ -623,11 +623,7 @@ class StateMachine():
             stretch = 1.10
             # stretch=1
             final_pose = np.array([x*stretch, y*stretch, z, 0.0, 0.0, th1])
-<<<<<<< HEAD
-            intermediate_pose = np.array([x, y, z, 0.0, 0.0, th1])
-=======
             intermediate_pose = np.array([x*0.8, y*0.8, z, 0.0, 0.0, th1])
->>>>>>> 2c98db5d3c6768dee40bc11f93d6a65aaf20eb08
             # print("th1", th1)
             final_joint_state = IK_pox(final_pose)
             intermediate_joint_state = IK_pox(intermediate_pose)
