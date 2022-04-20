@@ -55,7 +55,7 @@ class StateMachine():
 
         self.waypointGrips = 0
         self.comp1_start = True
-
+        self.rollover = 0
 
     def set_next_state(self, state):
         """!
@@ -576,8 +576,8 @@ class StateMachine():
 
         rect = cv2.minAreaRect(block)
         phi = -rect[2]*np.pi/180
-        print("rect: ", rect)
-        print("phi: ", phi)
+        # print("rect: ", rect)
+        # print("phi: ", phi)
         start_joint_state = self.rxarm.get_positions()
         # print("start_state", start_joint_state)
         # start_joint_state = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
@@ -605,8 +605,8 @@ class StateMachine():
             intermediate_joint_state = IK_pox(intermediate_pose)
 
         # print(intermediate_joint_state)
-        print("final pose: ", final_pose)
-        print(final_joint_state)
+        # print("final pose: ", final_pose)
+        # print(final_joint_state)
 
         # hold = input()
         hmode = 0
@@ -619,7 +619,7 @@ class StateMachine():
             stretch = 1.05
             # stretch=1
             final_pose = np.array([x*stretch, y*stretch, z, 0.0, 0.0, th1])
-            intermediate_pose = np.array([x, y, z+80, 0.0, 0.0, th1])
+            intermediate_pose = np.array([x, y, z, 0.0, 0.0, th1])
             # print("th1", th1)
             final_joint_state = IK_pox(final_pose)
             intermediate_joint_state = IK_pox(intermediate_pose)
@@ -652,7 +652,6 @@ class StateMachine():
             self.waypoints = [intermediate_joint_state, np.array([0.0, 0.0, 0.0 , 0.0, 0.0])]
         self.execute_click2grab()
         return 1
-
 
     def comp1(self):
         self.current_state = "comp1"
@@ -859,22 +858,94 @@ class StateMachine():
         return large_block_sorted_ind + small_block_sorted_ind
 
 
+    def destack(self):
+        # self.block_detections
+        # self.block_detectionsCAMCOORD
+      
+        destackdestinations = np.array([[150, -75],[215, -75],[280, -75],[340, -75],[150, 0],[215, 0],[280, 0],[340, 0],[150, 75]])
+        # print("stacked color indices")
+        # print(self.camera.color_indicesSTACKED)
+        ################### DESTACK PROCESS
+        sortedthiscycle = 0
+        for i in range(0,5):
+            centroids = self.camera.block_detectionsSTACKED[i].copy()
+            contours = self.camera.block_contoursSTACKED[i].copy()
+            for e, block in enumerate(contours):
+                # print("destack",e)
+                # print(block)
+                # print(self.camera.color_indicesSTACKED[e])
+                if np.size(centroids): # and self.camera.color_indicesSTACKED[e] != 6:
+                    
+                    blockX, blockY, blockZ = centroids[e]
+                    blockZ += 5
+
+                    self.dropZ_large = 35
+                    self.dropZ_small = 25
+                    blocksizethresh = 1000
+
+                    if cv2.contourArea(block) > blocksizethresh and blockY > 0:  # if the contour is a large block
+                        # grab block, drop at large goal
+
+                        flag = self.moveBlock(blockX, blockY, blockZ, 'grab', block)
+
+                        if (flag == 0):
+                            self.next_state = "idle"
+                            return
+
+                        
+                        # print(destackdestinations[sortedthiscycle][0])
+                        # print(destackdestinations[sortedthiscycle][1])
+                        self.moveBlock(destackdestinations[sortedthiscycle][0],
+                            destackdestinations[sortedthiscycle][1], self.dropZ_large, 'drop', block)
+
+                        # indicate that block was sorted
+                        sortedthiscycle += 1
+
+                    if cv2.contourArea(block) < blocksizethresh  and blockY > 0:  # if the contour is a small block
+                        # grab block, drop at small goal
+                        blockZ += 10
+                        flag = self.moveBlock(blockX, blockY, blockZ, 'grab', block)
+
+                        if (flag == 0):
+                            self.next_state = "idle"
+                            return
+
+                        self.moveBlock(destackdestinations[sortedthiscycle][0],
+                            destackdestinations[sortedthiscycle][1], self.dropZ_small, 'drop', block)
+
+                        # indicate that block was sorted
+                        sortedthiscycle += 1
+
+        if sortedthiscycle != 0:
+            self.rollover = sortedthiscycle
+            self.destack()
+        if sortedthiscycle == 0:
+            self.rxarm.sleep()
+            rospy.sleep(4)         
+
+        ###################
 
     def comp3(self):
         self.current_state = "comp3"
         self.status_message = "Executing Competition Task 3"
         blocksizethresh = 1000
 
+        print("about to destack")
+        self.destack()
+
+
         # positions in negative half to order blocks
         # listed in order of ROYGBV
+
+        Xscoot = 5
         color_positions = np.array([
-            [100, -75],
-            [145, -75],
-            [190, -75],
-            [235, -75],
-            [280, -75],
-            [0.0, 0.0]
-            [325, -75]
+            [100+Xscoot, -75],
+            [145+Xscoot, -75],
+            [190+Xscoot, -75],
+            [235+Xscoot, -75],
+            [280+Xscoot, -75],
+            [325+Xscoot, -75],
+            [325+Xscoot, -75]
         ], dtype=np.float32)
 
         # grab snapshot of contours, make sure robot is out of view
@@ -910,7 +981,11 @@ class StateMachine():
             self.dropZ_large = 35
             self.dropZ_small = 25
 
-            if cv2.contourArea(block) > blocksizethresh:  # if the contour is a large block
+            waitingareaBOOLEAN = 0
+            if blockY < 0 and blockX > 0:
+                waitingareaBOOLEAN = 1
+
+            if cv2.contourArea(block) > blocksizethresh and (blockY > 0 or waitingareaBOOLEAN):  # if the contour is a large block
                 # grab block, drop at large goal
 
                 flag = self.moveBlock(blockX, blockY, blockZ, 'grab', block)
@@ -919,18 +994,19 @@ class StateMachine():
                     self.next_state = "idle"
                     return
 
-                print("picked up block!")
+                # print("picked up block!")
 
-                print("place it here: ", color_positions[color_indices[e], 0][0],
-                    color_positions[color_indices[e], 1][0], self.dropZ_large)
-
-                self.moveBlock(color_positions[color_indices[e], 0][0],
-                    color_positions[color_indices[e], 1][0], self.dropZ_large, 'drop', block)
+                # print("place it here: ", color_positions[color_indices[e], 0][0],
+                #     color_positions[color_indices[e], 1][0], self.dropZ_large)
+                print("color_indices[e]")
+                print(color_indices[e])
+                self.moveBlock(-color_positions[color_indices[e], 0][0],
+                    color_positions[color_indices[e], 1][0]+50, self.dropZ_large, 'drop', block)
 
                 # indicate that block was sorted
                 sortedthiscycle += 1
 
-            if cv2.contourArea(block) < blocksizethresh:  # if the contour is a small block
+            if cv2.contourArea(block) < blocksizethresh  and (blockY > 0 or waitingareaBOOLEAN):  # if the contour is a small block
                 # grab block, drop at small goal
 
                 flag = self.moveBlock(blockX, blockY, blockZ, 'grab', block)
@@ -955,14 +1031,9 @@ class StateMachine():
         self.current_state = "comp4"
         self.status_message = "Executing Competition Task 4"
         blocksizethresh = 1000
-        color_positions = np.array([
-            [100, -75],
-            [145, -75],
-            [190, -75],
-            [235, -75],
-            [280, -75],
-            [325, -75]
-        ], dtype=np.float32)
+
+
+        self.destack()
 
         # grab snapshot of contours, make sure robot is out of view
         snapshotContours = self.camera.block_contours.copy()
@@ -976,16 +1047,16 @@ class StateMachine():
         sorted_indices = color_indices[:, 0].argsort()
 
 
-        print("sorted indices: ", sorted_indices)
-        print("color indices before: ", color_indices)
+        # print("sorted indices: ", sorted_indices)
+        # print("color indices before: ", color_indices)
 
         # rearrange snapshots in the new order
         color_indices = color_indices[sorted_indices]
         snapshotContours = snapshotContours[sorted_indices]
         snapshotBlocks = snapshotBlocks[sorted_indices]
 
-        print("sorted indices: ", sorted_indices)
-        print("color_indices after: ", color_indices)
+        # print("sorted indices: ", sorted_indices)
+        # print("color_indices after: ", color_indices)
 
         sortedthiscycle = 0
 
@@ -1004,8 +1075,14 @@ class StateMachine():
             blockZ += 5
             self.dropZ_large = 35
             self.dropZ_small = 25
+            
+            waitingareaBOOLEAN = 0
+            if blockY < 0 and blockX > 0:
+                waitingareaBOOLEAN = 1
 
-            if cv2.contourArea(block) > blocksizethresh:  # if the contour is a large block
+            if cv2.contourArea(block) > blocksizethresh and (blockY > 0 or waitingareaBOOLEAN):  # if the contour is a large block
+
+            # if cv2.contourArea(block) > blocksizethresh:  # if the contour is a large block
                 # grab block, drop at large goal
 
                 flag = self.moveBlock(blockX, blockY, blockZ, 'grab', block)
@@ -1022,8 +1099,9 @@ class StateMachine():
 
                 # indicate that block was sorted
                 sortedthiscycle += 1
-
-            if cv2.contourArea(block) < blocksizethresh:  # if the contour is a small block
+            
+            if cv2.contourArea(block) > blocksizethresh and (blockY > 0 or waitingareaBOOLEAN):
+            # if cv2.contourArea(block) < blocksizethresh:  # if the contour is a small block
                 # grab block, drop at small goal
 
                 flag = self.moveBlock(blockX, blockY, blockZ, 'grab', block)

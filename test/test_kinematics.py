@@ -48,7 +48,7 @@ if __name__ == '__main__':
     # print(th_d)
 
     print('Test IK 2')
-    pos = np.array([322.46, 268.29, 31, 0, 0, -0.8768])
+    pos = np.array([347, 331, 31, 0.0, 0, -0.8])
     th_d = IK_pox(pos)
     print('th_d = ')
     print(th_d)
