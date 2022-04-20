@@ -103,7 +103,7 @@ def get_pose_from_T(T):
     return pose
 
 
-def FK_pox(joint_angles, m_mat, s_lst):
+def FK_pox(joint_angles):
     """!
     @brief      Get a 4-tuple (x, y, z, phi) representing the pose of the desired link
 
@@ -112,11 +112,17 @@ def FK_pox(joint_angles, m_mat, s_lst):
                 angle about y in the base frame
 
     @param      joint_angles  The joint angles
-                m_mat         The M matrix
-                s_lst         List of screw vectors
 
-    @return     a 4-tuple (x, y, z, phi) representing the pose of the desired link
+    @return     a 6-tuple (x, y, z, phi, theta, psi) representing the pose and orientation of the end-effector
     """
+    xi1 = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 1.0])
+    xi2 = np.array([0.0, -103.91, 0.0, -1.0, 0.0, 0.0])
+    xi3 = np.array([0.0, 303.91, -50.0, 1.0, 0.0, 0.0])
+    xi4 = np.array([0.0, 303.91, -250.0, 1.0, 0.0, 0.0])
+    xi5 = np.array([-303.91, 0.0, 0.0, 0.0, 1.0, 0.0])
+    s_lst = np.array([xi1, xi2, xi3, xi4, xi5])
+    m_mat = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 424.15], [0.0, 0.0, 1.0, 293.91], [0.0, 0.0, 0.0, 1]])
+
     e1 = to_s_matrix(s_lst[0][3:6], s_lst[0][0:3], joint_angles[0])
     e2 = to_s_matrix(s_lst[1][3:6], s_lst[1][0:3], joint_angles[1])
     e3 = to_s_matrix(s_lst[2][3:6], s_lst[2][0:3], joint_angles[2])
@@ -129,7 +135,7 @@ def FK_pox(joint_angles, m_mat, s_lst):
     e15 = np.matmul(e14, e5)
     print('FK result = ', np.matmul(e15, m_mat))
 
-    return np.matmul(e15, m_mat)
+    return get_pose_from_T(np.matmul(e15, m_mat))
 
 
 def to_s_matrix(w, v, th):

@@ -24,6 +24,8 @@ from ui import Ui_MainWindow
 from rxarm import RXArm, RXArmThread
 from camera import Camera, VideoThread
 from state_machine import StateMachine, StateMachineThread, ExtMtx
+
+from kinematics import FK_pox
 """ Radians to/from  Degrees conversions """
 D2R = np.pi / 180.0
 R2D = 180.0 / np.pi
@@ -190,12 +192,13 @@ class Gui(QMainWindow):
     ### TODO: output the rest of the orientation according to the convention chosen
     @pyqtSlot(list)
     def updateEndEffectorReadout(self, pos):
-        self.ui.rdoutX.setText(str("%+.2f mm" % (1000 * pos[0])))
-        self.ui.rdoutY.setText(str("%+.2f mm" % (1000 * pos[1])))
-        self.ui.rdoutZ.setText(str("%+.2f mm" % (1000 * pos[2])))
-        self.ui.rdoutPhi.setText(str("%+.2f rad" % (pos[3])))
-        #self.ui.rdoutTheta.setText(str("%+.2f" % (pos[4])))
-        #self.ui.rdoutPsi.setText(str("%+.2f" % (pos[5])))
+        pose = FK_pox(self.joint_readouts)
+        self.ui.rdoutX.setText(str("%+.2f mm" % (pose[0])))
+        self.ui.rdoutY.setText(str("%+.2f mm" % (pose[1])))
+        self.ui.rdoutZ.setText(str("%+.2f mm" % (pose[2])))
+        self.ui.rdoutPhi.setText(str("%+.2f rad" % (pose[3])))
+        self.ui.rdoutTheta.setText(str("%+.2f" % (pose[4])))
+        self.ui.rdoutPsi.setText(str("%+.2f" % (pose[5])))
 
     @pyqtSlot(QImage, QImage, QImage, QImage)
     def setImage(self, rgb_image, depth_image, tag_image, blockdetect_image):

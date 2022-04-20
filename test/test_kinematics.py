@@ -38,7 +38,7 @@ if __name__ == '__main__':
     fk_poses = []
     for joint_angles in fk_angles:
         print('Joint angles:', joint_angles)
-        pose = get_pose_from_T(FK_pox(joint_angles, gst0, screws))
+        pose = FK_pox(joint_angles)
         print('pose = ',pose)
         fk_poses.append(pose)
 
@@ -49,10 +49,10 @@ if __name__ == '__main__':
 
     print('Test IK 2')
     pos = np.array([347, 331, 31, 0.0, 0, -0.8])
-    th_d = IK_pox(pos)
+    th_d = IK_pox(pose)
     print('th_d = ')
     print(th_d)
 
     print('back through FK')
-    pose = get_pose_from_T(FK_pox(th_d, gst0, screws))
+    pose = FK_pox(th_d)
     
