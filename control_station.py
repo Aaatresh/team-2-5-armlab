@@ -192,7 +192,7 @@ class Gui(QMainWindow):
     ### TODO: output the rest of the orientation according to the convention chosen
     @pyqtSlot(list)
     def updateEndEffectorReadout(self, pos):
-        pose = FK_pox(self.joint_readouts)
+        pose = FK_pox(self.rxarm.get_positions())
         self.ui.rdoutX.setText(str("%+.2f mm" % (pose[0])))
         self.ui.rdoutY.setText(str("%+.2f mm" % (pose[1])))
         self.ui.rdoutZ.setText(str("%+.2f mm" % (pose[2])))
