@@ -1,15 +1,19 @@
 import rospy
 from std_msgs.msg import String
-from sensor_mgs.msg import JointState
+from sensor_msgs.msg import JointState
 
+
+posdata = []
+veldata = []
 def callback_fn(data):
 
-    print("I see: ", data)
-
+    posdata.append(data.position[0:5])
+    veldata.append(data.velocity[0:5])
+    
 def joint_angle_subscriber():
 
     rospy.init_node("joint_angle_listener", anonymous=True)
-    rospy.subscriber("/rx200/joint_states", JointState, callback_fn)
+    rospy.Subscriber("/rx200/joint_states", JointState, callback_fn)
 
     rospy.spin()
 
