@@ -182,10 +182,10 @@ class StateMachine():
             #otherwise go to next pose
             print(pose)
             self.rxarm.set_positions(pose)
-            # if self.waypointGrips[e] == 1:
-            #     self.rxarm.close_gripper()
-            # else:
-            #     self.rxarm.open_gripper()
+            if self.waypointGrips[e] == 1:
+                self.rxarm.close_gripper()
+            else:
+                self.rxarm.open_gripper()
             rospy.sleep(2.)
 
 
@@ -282,8 +282,10 @@ class StateMachine():
 
         ExtMtx = np.block([[RotMtx,t_vec],[0,0,0,1]])
         self.camera.extrinsic_matrix = ExtMtx
-        # print("ExtMtx SHOULD BE\n")
-        # print(ExtMtx)
+        print("IntMtx")
+        print(Kteam)
+        print("ExtMtx")
+        print(ExtMtx)
         self.status_message = "Calibration - Completed Calibration"
         self.next_state = "idle"
 
@@ -377,12 +379,42 @@ class StateMachine():
         # print("Blocks Located:",self.camera.block_detections)
 
         for block in self.camera.block_colors:
+            rect = cv2.minAreaRect(self.camera.block_contours[index])
+            phi = -rect[2]*np.pi/180
             print(self.camera.block_colors[index]," block of size ",  self.camera.block_sizes[index], "located at coord: ", self.camera.block_detections[index],
-            "color index: ", self.camera.color_indices[index])
+            "color index: ", self.camera.color_indices[index], "angle: ", phi)
             index = index+1
         index = 0
         print("---------end of list--------")
 
+        counter = 0
+        print("---------Elevated Block Detection List -------------")
+        for block in self.camera.block_contoursSTACKED:
+
+            if(block.size > 0):
+
+                for e, eachcontour in enumerate(block):
+                    
+
+                    # print(self.camera.block_contoursSTACKED.shape)
+                    rect = cv2.minAreaRect(self.camera.block_contoursSTACKED[index][e])
+                    phi = -rect[2]*np.pi/180
+
+                    # print(len(self.camera.block_sizesSTACKED))
+                    # print("sample: ", self.camera.block_sizesSTACKED[counter])
+                    # print(self.camera.block_detectionsSTACKED.shape)
+
+                    print(" block of size ",  self.camera.block_sizesSTACKED[counter], "located at coord: ", self.camera.block_detectionsSTACKED[index][e],
+                    "angle: ", phi)
+                    # hold=input()
+                    counter += 1
+            index = index+1
+
+            # print("sample block shape: ", block.shape)
+
+
+        index = 0
+        print("-------------------end of list----------------------")
         # print("Detected Colors:", self.camera.block_colors)
         # print("Detected Colors Hval:", self.camera.block_colors_H)
 
