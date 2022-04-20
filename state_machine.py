@@ -163,6 +163,49 @@ class StateMachine():
         self.current_state = "estop"
         self.rxarm.disable_torque()
 
+    def execute_teachNRepeat(self):
+        """!
+        @brief      Go through all waypoints
+        TODO: Implement this function to execute a waypoint plan
+              Make sure you respect estop signal
+        """
+        numPoses = len(self.waypoints)
+        # print(numPoses)
+
+        self.status_message = "State: Execute - Executing motion plan"
+        estopPRESSED = 0
+
+        observed_poses = np.zeros((1, 6))
+
+        for e, pose in enumerate(self.waypoints):
+            # if estop is pressed, go to estop state...
+            if self.next_state == "estop":
+                estopPRESSED = 1
+                break
+            # otherwise go to next pose
+            print(pose)
+            self.rxarm.set_positions(pose)
+            if self.waypointGrips[e] == 1:
+                self.rxarm.close_gripper()
+            else:
+                self.rxarm.open_gripper()
+            rospy.sleep(2.)
+
+            observed_pose = self.rxarm.get_positions()
+            observed_pose.append(self.waypointGrips[e])
+            observed_poses = np.vstack((observed_poses, observed_pose))
+
+        # np.save("observed_joint_states.npy", observed_poses)
+
+        np.savetxt("observed_joint_states.csv", observed_poses, delimiter=", ")
+
+        if estopPRESSED == 1:
+            self.next_state = "estop"
+        else:
+            self.next_state = "idle"
+
+
+
     def execute(self):
         """!
         @brief      Go through all waypoints
@@ -333,6 +376,7 @@ class StateMachine():
         self.current_state = "recpose"
         newpose = self.rxarm.get_positions()
         newpose = np.append(newpose,self.gripcommand)
+
         self.poses = np.vstack((self.poses,newpose))
         self.next_state="idleteachmode"
 
