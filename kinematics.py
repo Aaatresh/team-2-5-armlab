@@ -121,7 +121,7 @@ def FK_pox(joint_angles):
     xi4 = np.array([0.0, 303.91, -250.0, 1.0, 0.0, 0.0])
     xi5 = np.array([-303.91, 0.0, 0.0, 0.0, 1.0, 0.0])
     s_lst = np.array([xi1, xi2, xi3, xi4, xi5])
-    m_mat = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 424.15], [0.0, 0.0, 1.0, 293.91], [0.0, 0.0, 0.0, 1]])
+    m_mat = np.array([[1.0, 0.0, 0.0, -4.5], [0.0, 1.0, 0.0, 429.15], [0.0, 0.0, 1.0, 301.91], [0.0, 0.0, 0.0, 1]])
 
     e1 = to_s_matrix(s_lst[0][3:6], s_lst[0][0:3], joint_angles[0])
     e2 = to_s_matrix(s_lst[1][3:6], s_lst[1][0:3], joint_angles[1])
@@ -133,7 +133,6 @@ def FK_pox(joint_angles):
     e13 = np.matmul(e12, e3)
     e14 = np.matmul(e13, e4)
     e15 = np.matmul(e14, e5)
-    print('FK result = ', np.matmul(e15, m_mat))
 
     return get_pose_from_T(np.matmul(e15, m_mat))
 
@@ -187,8 +186,8 @@ def IK_pox(pose):
     xi4 = np.array([0.0, 303.91, -250.0, 1.0, 0.0, 0.0])
     xi5 = np.array([-303.91, 0.0, 0.0, 0.0, 1.0, 0.0])
     s_lst = np.array([xi1, xi2, xi3, xi4, xi5])
-    m_mat = np.array([[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 424.15], [0.0, 0.0, 1.0, 293.91], [0.0, 0.0, 0.0, 1]])
-
+    m_mat = np.array([[1.0, 0.0, 0.0, -4.5], [0.0, 1.0, 0.0, 429.15], [0.0, 0.0, 1.0, 301.91], [0.0, 0.0, 0.0, 1]])
+    
     gd = pose_to_T(pose)
     gi = np.linalg.inv(m_mat)
     g1 = np.matmul(gd, gi)

@@ -499,8 +499,11 @@ class StateMachine():
 
     def click2GrabNPlace(self):
 
-        Pteam = np.array([[975.5068, 0, 628.0801], [0, 993.6321, 386.8233], [0, 0, 1.0000]])
-        Pinv = np.linalg.inv(Pteam)
+        Kteam =   np.array([[954.6327,0,629.4831],[0,968.4867,386.4730],[0,0,1.0000]],dtype=np.float32)
+        Kinv = np.linalg.inv(Kteam)
+
+        # Pteam = np.array([[975.5068, 0, 628.0801], [0, 993.6321, 386.8233], [0, 0, 1.0000]])
+        # Pinv = np.linalg.inv(Pteam)
 
         # extMtx = np.array([[1,0,0,-14.1429],[0,-1,0,194.4616],[0,0,-1,978],[0,0,0,1]])
         extMtx = self.camera.extrinsic_matrix
@@ -527,23 +530,23 @@ class StateMachine():
         z = self.camera.DepthFrameRaw[pixel_point[1, 0]][pixel_point[0, 0]]
         print("pixel_point: ", pixel_point)
         print("z = ", z)
-        self.current_state = "IDblocks"
-        self.status_message = "Detecting and printing blocks found"
-        print("-------Detected block list -----------")
+        # self.current_state = "IDblocks"
+        # self.status_message = "Detecting and printing blocks found"
+        # print("-------Detected block list -----------")
 
-        index = 0
-        # print("Blocks Located:",self.camera.block_detections)
-        for block in self.camera.block_colors:
-            print(self.camera.block_colors[index]," block located at coord: ", self.camera.block_detections[index])
-            index = index+1
-        index = 0
-        print("---------end of list--------")
+        # index = 0
+        # # print("Blocks Located:",self.camera.block_detections)
+        # for block in self.camera.block_colors:
+        #     print(self.camera.block_colors[index]," block located at coord: ", self.camera.block_detections[index])
+        #     index = index+1
+        # index = 0
+        # print("---------end of list--------")
 
-        # print("Detected Colors:", self.camera.block_colors)
-        # print("Detected Colors Hval:", self.camera.block_colors_H)
+        # # print("Detected Colors:", self.camera.block_colors)
+        # # print("Detected Colors Hval:", self.camera.block_colors_H)
 
-        self.next_state="idle"
-        xyz_c = z * np.matmul(Pinv, pixel_point)
+        # self.next_state="idle"
+        xyz_c = z * np.matmul(Kinv, pixel_point)
         xyz_w = np.matmul(invExtMtx, np.array([[xyz_c[0, 0]], [xyz_c[1, 0]], [xyz_c[2,0]], [1]]))
         xyz_w[2,0] = 976 - z + 10
 
@@ -570,7 +573,7 @@ class StateMachine():
         # Make sure gripper is open
         self.rxarm.open_gripper()
         time.sleep(2)
-        start_joint_state = self.rxarm.get_positions()
+        start_joint_state = np.array([0.0, 0.0, 0.0, 0.0, 0.0])#self.rxarm.get_positions()
 
         print("joint positions: ", start_joint_state)
         print("final joint position: ", final_joint_state)
@@ -588,7 +591,7 @@ class StateMachine():
         pixel_point = np.array([self.camera.last_click[0], self.camera.last_click[1], 1]).reshape(-1, 1)
         z = self.camera.DepthFrameRaw[pixel_point[1, 0]][pixel_point[0, 0]]
 
-        xyz_c = z * np.matmul(Pinv, pixel_point)
+        xyz_c = z * np.matmul(Kinv, pixel_point)
         xyz_w = np.matmul(invExtMtx, np.array([[xyz_c[0, 0]], [xyz_c[1, 0]], [xyz_c[2, 0]], [1]]))
         xyz_w[2,0] = 976 - z + 40
 
@@ -604,7 +607,7 @@ class StateMachine():
         # final_joint_state[2] = final_joint_state[2]*-1
         # final_joint_state[3] = final_joint_state[3]*-1
 
-        start_joint_state = self.rxarm.get_positions()
+        start_joint_state = np.array([0.0, 0.0, 0.0, 0.0, 0.0])#self.rxarm.get_positions()
 
         # plan path to point, open gripper and plan a path back to its starting position
         self.plan_and_execute(start_joint_state, final_joint_state, xyz_w,
