@@ -702,7 +702,7 @@ class StateMachine():
             stretch = 1.05
             # stretch=1
             final_pose = np.array([x*stretch, y*stretch, z, 0.0, 0.0, th1])
-            intermediate_pose = np.array([x*0.98, y*0.9, z, 0.0, 0.0, th1])
+            intermediate_pose = np.array([x*0.9, y*0.9, z, 0.0, 0.0, th1])
             # print("th1", th1)
             final_joint_state = IK_pox(final_pose)
             intermediate_joint_state = IK_pox(intermediate_pose)
