@@ -1,7 +1,5 @@
-Launch realsense:
+# ArmLab
 
-roslaunch realsense2_camera rs_camera.launch align_depth:=true
+## ROB-550, Team 5
 
-Launch rx200 arm:
-
-roslaunch interbotix_sdk arm_run.launch robot_name:=rx200 use_time_based_profile:=true gripper_operating_mode:=pwm
+This repository is the code base of the ArmLab project in the ROB-550 course. At a high level, running this code base allows a 5 DOF robotic manipulator and a RealSense RGBD camera to detect pose and color of blocks of interest, and perform a pick-and-place task corresponding to it. 
