@@ -28,5 +28,5 @@ Clicking the buttons in the GUI that pops up after running the last command will
 
 ## Contributors
 * Anirudh Ashok Aatresh ([aaatresh@umich.edu](mailto:aaatresh@umich.edu))
-* Christopher Nesler ([neslerc@umich.edu](neslerc@umich.edu))
-* Josh Roney ([jproney@umich.edu](jproney@umich.edu))
+* Christopher Nesler ([neslerc@umich.edu](mailto:neslerc@umich.edu))
+* Josh Roney ([jproney@umich.edu](mailto:jproney@umich.edu))
